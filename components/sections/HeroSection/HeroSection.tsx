@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import './HeroSection.scss';
+import Image from 'next/image';
 
 export function HeroSection() {
   const scrollToContact = () => {
@@ -11,12 +12,14 @@ export function HeroSection() {
   };
 
   return (
-    <section
-      className="hero-section"
-      style={{
-        backgroundImage: 'url("https://images.unsplash.com/photo-1589939705384-5185137a7f0f?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80")'
-      }}
-    >
+    <section className="hero-section">
+      <Image 
+        src="/images/ImgHome.jpg"
+        alt="Fundo da seção hero"
+        fill
+        className="hero-section__background"
+        priority
+      />
       <div className="hero-section__content">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

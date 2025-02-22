@@ -135,6 +135,11 @@
     z-index: 1;
     pointer-events: none;
   }
+
+  &__background {
+    object-fit: cover;
+    z-index: -1;
+  }
 }
 
 // Animações
