@@ -1,0 +1,196 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogOverlay,
+} from "@/components/ui/dialog";
+import './GallerySection.scss';
+
+const galleryItems = [
+  {
+    title: "Limpeza da fachada do hotel Linx aeroporto galeão",
+    description: "Projeto residencial com acabamento premium",
+    images: [
+      "/images/limpeza-fachada-1.jpeg",
+      "/images/limpeza-fachada-2.jpeg",
+      "/images/limpeza-fachada-3.jpeg",
+      "/images/limpeza-fachada-4.jpeg",
+    ]
+  },
+  {
+    title: "Limpeza da clarabóia da recepção do hotel prodigy",
+    description: "Renovação completa de escritório",
+    images: [
+      "/images/limpeza-claraboia-1.jpeg",
+      "/images/limpeza-claraboia-2.jpeg",
+      "/images/limpeza-claraboia-3.jpeg",
+      "/images/limpeza-claraboia-4.jpeg",
+      "/images/limpeza-claraboia-5.jpeg",
+    ]
+  },
+  {
+    title: "Revitalização do teto do salão do shopping bossa nova mall",
+    description: "Aplicação de textura decorativa",
+    images: [
+      "/images/rev-teto-1.jpeg",
+      "/images/rev-teto-2.jpeg",
+      "/images/rev-teto-3.jpeg",
+      "/images/rev-teto-4.jpeg",
+      "/images/rev-teto-5.jpeg",
+    ]
+  },
+  {
+    title: "Reforma da borda da piscina do hotel prodigy",
+    description: "Pintura externa com proteção UV",
+    images: [
+      "/images/reforma-piscina-1.jpeg",
+      "/images/reforma-piscina-2.jpeg",
+    ]
+  },
+  {
+    title: "Limpeza das janelas dos quartos do hotel prodigy",
+    description: "Renovação de sala de estar",
+    images: [
+      "/images/limpeza-janela-1.jpeg",
+      "/images/limpeza-janela-2.jpeg",
+      "/images/limpeza-janela-3.jpeg",
+    ]
+  },
+  {
+    title: "Serviço na subestação no hotel prodigy aeroporto santos Dumont",
+    description: "Projeto para área corporativa",
+    images: [
+      "/images/sub-hotel-1.jpeg",
+      "/images/sub-hotel-2.jpeg",
+      "/images/sub-hotel-3.jpeg",
+    ]
+  }
+];
+
+export function GallerySection() {
+  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handlePrevImage = () => {
+    if (selectedImage !== null) {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? galleryItems[selectedImage].images.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const handleNextImage = () => {
+    if (selectedImage !== null) {
+      setCurrentImageIndex((prev) => 
+        prev === galleryItems[selectedImage].images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  return (
+    <section className="gallery-section" id="gallery">
+      <div className="gallery-section__container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="gallery-section__header"
+        >
+          <h2>Galeria de Trabalhos</h2>
+          <p>Conheça alguns dos nossos projetos realizados</p>
+        </motion.div>
+
+        <div className="gallery-section__grid">
+          {galleryItems.map((item, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              className="gallery-section__item"
+              onClick={() => {
+                setSelectedImage(index);
+                setCurrentImageIndex(0);
+              }}
+            >
+              <img
+                src={item.images[0]}
+                alt={item.title}
+                className="gallery-section__image"
+              />
+              <div className="gallery-section__overlay">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <Dialog 
+          open={selectedImage !== null} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedImage(null);
+              setCurrentImageIndex(0);
+            }
+          }}
+        >
+          <DialogOverlay className="gallery-section__modal-overlay" />
+          <DialogContent className="gallery-section__modal-content">
+            {selectedImage !== null && (
+              <>
+                <DialogHeader className="gallery-section__modal-header">
+                  <DialogTitle>{galleryItems[selectedImage].title}</DialogTitle>
+                  <DialogDescription>
+                    {galleryItems[selectedImage].description}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="gallery-section__modal-gallery">
+                  {galleryItems[selectedImage].images.length > 1 && (
+                    <button 
+                      onClick={handlePrevImage}
+                      className="gallery-section__nav-button gallery-section__nav-button--prev"
+                      aria-label="Imagem anterior"
+                    >
+                      ←
+                    </button>
+                  )}
+                  
+                  <img
+                    src={galleryItems[selectedImage].images[currentImageIndex]}
+                    alt={`${galleryItems[selectedImage].title} - Imagem ${currentImageIndex + 1}`}
+                    className="gallery-section__modal-image"
+                  />
+                  
+                  {galleryItems[selectedImage].images.length > 1 && (
+                    <>
+                      <button 
+                        onClick={handleNextImage}
+                        className="gallery-section__nav-button gallery-section__nav-button--next"
+                        aria-label="Próxima imagem"
+                      >
+                        →
+                      </button>
+                      <div className="gallery-section__image-counter">
+                        {currentImageIndex + 1} / {galleryItems[selectedImage].images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </section>
+  );
+}

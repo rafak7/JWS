@@ -1,0 +1,228 @@
+.testimonials-section {
+  background-color: var(--background-color, #f9fafb);
+  position: relative;
+  overflow: hidden;
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 5rem 1rem;
+
+    @media (min-width: 1024px) {
+      padding: 6rem 2rem;
+    }
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 4rem;
+
+    h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-primary, #1a1a1a);
+      margin-bottom: 1rem;
+
+      @media (min-width: 768px) {
+        font-size: 3rem;
+      }
+    }
+
+    p {
+      color: var(--text-secondary, #4b5563);
+      font-size: 1.125rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  }
+
+  &__carousel {
+    position: relative;
+    padding: 0 2rem;
+
+    @media (min-width: 768px) {
+      padding: 0 3rem;
+    }
+  }
+
+  &__card {
+    background: white;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    &-content {
+      padding: 2rem;
+    }
+  }
+
+  &__stars {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--star-color, #fbbf24);
+      fill: currentColor;
+      transition: transform 0.3s ease;
+
+      &:hover {
+        transform: scale(1.2);
+      }
+    }
+  }
+
+  &__text {
+    color: var(--text-secondary, #4b5563);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    position: relative;
+
+    &::before,
+    &::after {
+      content: '"';
+      font-size: 2rem;
+      color: var(--primary-color);
+      opacity: 0.2;
+      position: absolute;
+    }
+
+    &::before {
+      left: -0.5rem;
+      top: -0.5rem;
+    }
+
+    &::after {
+      right: -0.5rem;
+      bottom: -1rem;
+    }
+  }
+
+  &__author {
+    &-name {
+      font-weight: 600;
+      color: var(--text-primary, #1a1a1a);
+      margin-bottom: 0.25rem;
+    }
+
+    &-role {
+      font-size: 0.875rem;
+      color: var(--text-secondary, #4b5563);
+    }
+  }
+
+  // Carousel navigation
+  &__nav-button {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--primary-color);
+      color: white;
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    &--prev {
+      left: 0;
+    }
+
+    &--next {
+      right: 0;
+    }
+
+    svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      width: 2.5rem;
+      height: 2.5rem;
+
+      svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+    }
+  }
+
+  // Decorative elements
+  &::before {
+    content: '';
+    position: absolute;
+    right: -10%;
+    top: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(var(--primary-rgb), 0.05) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: -10%;
+    bottom: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(var(--primary-rgb), 0.05) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+}
+
+// Animations
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes starPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.star-pulse {
+  animation: starPulse 1.5s infinite ease-in-out;
+}
