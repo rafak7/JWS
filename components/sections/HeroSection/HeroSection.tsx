@@ -27,10 +27,10 @@ export function HeroSection() {
           transition={{ duration: 0.8 }}
         >
           <h1 className="hero-section__title">
-            Transforme seu Espaço
+            JWS - Empreiteira
           </h1>
           <p className="hero-section__subtitle">
-            Serviços profissionais de pintura para dar vida aos seus ambientes
+            Serviços profissionais de para dar vida aos seus ambientes
           </p>
           <Button
             onClick={scrollToContact}

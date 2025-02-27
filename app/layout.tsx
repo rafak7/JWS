@@ -8,9 +8,12 @@ import { WhatsAppButton } from '@/components/WhatsAppButton';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ArtePinta - Serviços Profissionais de Pintura',
+  title: 'JWS - Empreiteira',
   description: 'Transforme seu ambiente com nossos serviços profissionais de pintura. Atendemos residências e empresas com qualidade e excelência.',
   keywords: 'pintura, pintura residencial, pintura comercial, serviços de pintura, pintores profissionais',
+  icons: {
+    icon: '/images/jws-logo.jpeg',
+  },
 };
 
 export default function RootLayout({

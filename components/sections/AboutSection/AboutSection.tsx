@@ -37,7 +37,7 @@ export function AboutSection() {
             transition={{ duration: 0.8, delay: 0.2 }}
           >
             <Image
-              src="/images/pintura-fachada.jpg"
+              src="/images/jws-logo.jpeg"
               alt="Equipe de pintores profissionais"
               width={600}
               height={400}

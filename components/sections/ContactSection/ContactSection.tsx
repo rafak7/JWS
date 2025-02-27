@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import './ContanctSection.scss';
+import './ContactSection.scss';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -26,6 +26,9 @@ const formSchema = z.object({
   phone: z.string().min(10, 'Telefone inválido'),
   message: z.string().min(10, 'Mensagem deve ter pelo menos 10 caracteres'),
 });
+
+// Número de telefone para o WhatsApp
+const WHATSAPP_NUMBER = '5511942717987'; // Formato: código do país + DDD + número
 
 export function ContactSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,12 +47,23 @@ export function ContactSection() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Formatar a mensagem para o WhatsApp
+      const message = `*Nova mensagem do site*\n\n*Nome:* ${values.name}\n*Email:* ${values.email}\n*Telefone:* ${values.phone}\n\n*Mensagem:*\n${values.message}`;
+      
+      // Codificar a mensagem para URL
+      const encodedMessage = encodeURIComponent(message);
+      
+      // Criar o link do WhatsApp
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodedMessage}`;
+      
+      // Abrir o link em uma nova aba
+      window.open(whatsappUrl, '_blank');
+      
       toast({
         title: 'Mensagem enviada!',
-        description: 'Entraremos em contato em breve.',
+        description: 'Você será redirecionado para o WhatsApp para finalizar o envio.',
       });
+      
       form.reset();
     } catch (error) {
       toast({
