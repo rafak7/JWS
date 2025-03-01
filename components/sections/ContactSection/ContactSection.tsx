@@ -28,7 +28,7 @@ const formSchema = z.object({
 });
 
 // Número de telefone para o WhatsApp
-const WHATSAPP_NUMBER = '5511942717987'; // Formato: código do país + DDD + número
+const WHATSAPP_NUMBER = '5521984506031'; // Formato: código do país + DDD + número
 
 export function ContactSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,21 +177,21 @@ export function ContactSection() {
                   <Phone className="w-6 h-6 text-primary" />
                   <div>
                     <p className="font-medium">Telefone</p>
-                    <p className="text-gray-600">(11) 99999-9999</p>
+                    <p className="text-gray-600">(21) 98450-6031</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <Mail className="w-6 h-6 text-primary" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <p className="text-gray-600">contato@artepinta.com.br</p>
+                    <p className="text-gray-600">jws.manutencao@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <MapPin className="w-6 h-6 text-primary" />
                   <div>
                     <p className="font-medium">Endereço</p>
-                    <p className="text-gray-600">Rua das Cores, 123 - São Paulo, SP</p>
+                    <p className="text-gray-600">Av coelho da rocha 1713 rocha sobrinho mesquita</p>
                   </div>
                 </div>
               </div>
