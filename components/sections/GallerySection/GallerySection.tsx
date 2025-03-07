@@ -15,60 +15,69 @@ import './GallerySection.scss';
 const galleryItems = [
   {
     title: "Limpeza da fachada do hotel Linx aeroporto galeão",
-    description: "Projeto residencial com acabamento premium",
+    // description: "Projeto residencial com acabamento premium",
     images: [
-      "/images/limpeza-fachada-1.jpeg",
-      "/images/limpeza-fachada-2.jpeg",
-      "/images/limpeza-fachada-3.jpeg",
-      "/images/limpeza-fachada-4.jpeg",
+      "/images/aeroporto-galeao/limpeza-fachada-1.jpeg",
+      "/images/aeroporto-galeao/limpeza-fachada-2.jpeg",
+      "/images/aeroporto-galeao/limpeza-fachada-3.jpeg",
+      "/images/aeroporto-galeao/limpeza-fachada-4.jpeg",
     ]
   },
   {
     title: "Limpeza da clarabóia da recepção do hotel prodigy",
-    description: "Renovação completa de escritório",
+    // description: "Renovação completa de escritório",
     images: [
-      "/images/limpeza-claraboia-1.jpeg",
-      "/images/limpeza-claraboia-2.jpeg",
-      "/images/limpeza-claraboia-3.jpeg",
-      "/images/limpeza-claraboia-4.jpeg",
-      "/images/limpeza-claraboia-5.jpeg",
+      "/images/claraboia-prodigy/limpeza-claraboia-1.jpeg",
+      "/images/claraboia-prodigy/limpeza-claraboia-2.jpeg",
+      "/images/claraboia-prodigy/limpeza-claraboia-3.jpeg",
+      "/images/claraboia-prodigy/limpeza-claraboia-4.jpeg",
+      "/images/claraboia-prodigy/limpeza-claraboia-5.jpeg",
     ]
   },
   {
     title: "Revitalização do teto do salão do shopping bossa nova mall",
-    description: "Aplicação de textura decorativa",
+    // description: "Aplicação de textura decorativa",
     images: [
-      "/images/rev-teto-1.jpeg",
-      "/images/rev-teto-2.jpeg",
-      "/images/rev-teto-3.jpeg",
-      "/images/rev-teto-4.jpeg",
-      "/images/rev-teto-5.jpeg",
+      "/images/rev-teto/rev-teto-1.jpeg",
+      "/images/rev-teto/rev-teto-2.jpeg",
+      "/images/rev-teto/rev-teto-3.jpeg",
+      "/images/rev-teto/rev-teto-4.jpeg",
+      "/images/rev-teto/rev-teto-5.jpeg",
     ]
   },
   {
     title: "Reforma da borda da piscina do hotel prodigy",
-    description: "Pintura externa com proteção UV",
+    // description: "Pintura externa com proteção UV",
     images: [
-      "/images/reforma-piscina-1.jpeg",
-      "/images/reforma-piscina-2.jpeg",
+      "/images/piscina-prodigy/reforma-piscina-1.jpeg",
+      "/images/piscina-prodigy/reforma-piscina-2.jpeg",
     ]
   },
   {
     title: "Limpeza das janelas dos quartos do hotel prodigy",
-    description: "Renovação de sala de estar",
+    // description: "Renovação de sala de estar",
     images: [
-      "/images/limpeza-janela-1.jpeg",
-      "/images/limpeza-janela-2.jpeg",
-      "/images/limpeza-janela-3.jpeg",
+      "/images/janela-prodigy/limpeza-janela-1.jpeg",
+      "/images/janela-prodigy/limpeza-janela-2.jpeg",
+      "/images/janela-prodigy/limpeza-janela-3.jpeg",
     ]
   },
   {
     title: "Serviço na subestação no hotel prodigy aeroporto santos Dumont",
-    description: "Projeto para área corporativa",
+    // description: "Projeto para área corporativa",
     images: [
-      "/images/sub-hotel-1.jpeg",
-      "/images/sub-hotel-2.jpeg",
-      "/images/sub-hotel-3.jpeg",
+      "/images/sub-prodigy/sub-hotel-1.jpeg",
+      "/images/sub-prodigy/sub-hotel-2.jpeg",
+      "/images/sub-prodigy/sub-hotel-3.jpeg",
+    ]
+  },
+  {
+    title: "Cobertura de policarbonato no hotel prodigy",
+    // description: "Renovação de piscina",
+    images: [
+      "/images/policarbonato-prodigy/policarbonato-prodigy-1.jpeg",
+      "/images/policarbonato-prodigy/policarbonato-prodigy-2.jpeg",
+      "/images/policarbonato-prodigy/policarbonato-prodigy-3.jpeg",
     ]
   }
 ];

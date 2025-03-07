@@ -17,11 +17,11 @@ interface Partner {
 }
 
 const partners: Partner[] = [
-    { id: 1, name: 'Parceiro 1', logo: '/images/logo_linx.webp' },
-    { id: 2, name: 'Parceiro 2', logo: '/images/logo_prodigy.png' },
-    { id: 3, name: 'Parceiro 3', logo: '/images/logo_bossanova.png' },
-    { id: 4, name: 'Parceiro 4', logo: '/images/partners/partner4.png' },
-    { id: 5, name: 'Parceiro 5', logo: '/images/partners/partner5.png' },
+    { id: 1, name: 'Parceiro 1', logo: '/images/parceiros/logo_linx.webp' },
+    { id: 2, name: 'Parceiro 2', logo: '/images/parceiros/logo_prodigy.png' },
+    { id: 3, name: 'Parceiro 3', logo: '/images/parceiros/logo_bossanova.png' },
+    { id: 4, name: 'Parceiro 4', logo: '/images/parceiros/logo_arena.png' },
+    { id: 5, name: 'Parceiro 5', logo: '/images/parceiros/logo_nobile.jpg' },
     // Adicione mais parceiros conforme necessário
 ];
 
