@@ -22,7 +22,6 @@ const partners: Partner[] = [
     { id: 3, name: 'Parceiro 3', logo: '/images/parceiros/logo_bossanova.png' },
     { id: 4, name: 'Parceiro 4', logo: '/images/parceiros/logo_arena.png' },
     { id: 5, name: 'Parceiro 5', logo: '/images/parceiros/logo_nobile.jpg' },
-    // Adicione mais parceiros conforme necessário
 ];
 
 export const PartnersSection = () => {

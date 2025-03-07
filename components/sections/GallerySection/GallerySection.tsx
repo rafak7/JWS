@@ -137,7 +137,7 @@ export function GallerySection() {
               />
               <div className="gallery-section__overlay">
                 <h3>{item.title}</h3>
-                <p>{item.description}</p>
+                {/* <p>{item.description}</p> */}
               </div>
             </motion.div>
           ))}
@@ -158,9 +158,9 @@ export function GallerySection() {
               <>
                 <DialogHeader className="gallery-section__modal-header">
                   <DialogTitle>{galleryItems[selectedImage].title}</DialogTitle>
-                  <DialogDescription>
+                  {/* <DialogDescription>
                     {galleryItems[selectedImage].description}
-                  </DialogDescription>
+                  </DialogDescription> */}
                 </DialogHeader>
                 
                 <div className="gallery-section__modal-gallery">
