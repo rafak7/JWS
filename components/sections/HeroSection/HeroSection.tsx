@@ -30,7 +30,7 @@ export function HeroSection() {
             JWS - Empreiteira
           </h1>
           <p className="hero-section__subtitle">
-            Serviços profissionais de para dar vida aos seus ambientes
+            Serviços profissionais para dar vida aos seus ambientes
           </p>
           <Button
             onClick={scrollToContact}
