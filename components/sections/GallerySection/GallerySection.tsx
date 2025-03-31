@@ -79,7 +79,52 @@ const galleryItems = [
       "/images/policarbonato-prodigy/policarbonato-prodigy-2.jpeg",
       "/images/policarbonato-prodigy/policarbonato-prodigy-3.jpeg",
     ]
-  }
+  },
+  {
+    title: "Manutenção na piscina do hotel",
+    images: [
+      "/images/manut-piscina/manut-1.jpeg",
+      "/images/manut-piscina/manut-2.jpeg",
+      "/images/manut-piscina/manut-3.jpeg",
+      "/images/manut-piscina/manut-4.jpeg",
+    ]
+  },
+  {
+    title: "Limpeza das janelas hotel prodigy",
+    images: [
+      "/images/limpeza-janela-prod/limpeza-jan2.jpeg",
+      "/images/limpeza-janela-prod/limpeza-jan1.jpeg",
+      "/images/limpeza-janela-prod/limpeza-jan3.jpeg",
+    ]
+  },
+  {
+    title: "Reforma da sala da segurança do hotel prodigy",
+    images: [
+      "/images/reforma-sec/reforma-sec1.jpeg",
+      "/images/reforma-sec/reforma-sec2.jpeg",
+      "/images/reforma-sec/reforma-sec3.jpeg",
+      "/images/reforma-sec/reforma-sec4.jpeg",
+    ]
+  },
+  {
+    title: "Revitalização do teto da recepção do prodigy hotel",
+    images: [
+      "/images/teto-prod/teto-rev1.jpeg",
+      "/images/teto-prod/teto-rev2.jpeg",
+      "/images/teto-prod/tetp-rev3.jpeg",
+      "/images/teto-prod/teto-rev4.jpeg",
+    ]
+  },
+  {
+    title: "Troca de vidro 20mm clarabóia do hotel prodigy",
+    images: [
+      "/images/troca-vidro/troca-vidro1.jpeg",
+      "/images/troca-vidro/troca-vidro2.jpeg",
+      "/images/troca-vidro/troca-vidro3.jpeg",
+      "/images/troca-vidro/troca-vidro4.jpeg",
+      "/images/troca-vidro/troca-vidro5.jpeg",
+    ]
+  },  
 ];
 
 export function GallerySection() {
