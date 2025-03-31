@@ -6,6 +6,29 @@
   background-repeat: no-repeat;
   overflow: hidden;
 
+  &__placeholder {
+    position: absolute;
+    inset: 0;
+    background-color: #333;
+    z-index: 0;
+    transition: opacity 0.5s ease;
+
+    &--hidden {
+      opacity: 0;
+    }
+  }
+
+  &__background {
+    opacity: 0;
+    transition: opacity 1s ease;
+    object-fit: cover;
+    z-index: -1;
+
+    &--loaded {
+      opacity: 1;
+    }
+  }
+
   // Overlay escuro
   &::before {
     content: '';
@@ -134,11 +157,6 @@
     );
     z-index: 1;
     pointer-events: none;
-  }
-
-  &__background {
-    object-fit: cover;
-    z-index: -1;
   }
 }
 
