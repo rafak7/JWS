@@ -124,7 +124,21 @@ const galleryItems = [
       "/images/troca-vidro/troca-vidro4.jpeg",
       "/images/troca-vidro/troca-vidro5.jpeg",
     ]
-  },  
+  },
+  {
+    title: "Limpeza da clarabóia e ACM",
+    images: [
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-1.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-2.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-3.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-4.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-5.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-6.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-7.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-8.jpeg",
+      "/images/limpeza-claraboia-acm/limpeza-claraboia-acm-9.jpeg",      
+    ]
+  },
 ];
 
 export function GallerySection() {
