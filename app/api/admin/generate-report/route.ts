@@ -25,13 +25,13 @@ async function imageToBase64(file: any): Promise<string> {
   const buffer = Buffer.from(arrayBuffer);
   
   // Limitar tamanho da imagem para evitar problemas de memória
-  const maxSize = 500 * 1024; // 500KB
+  const maxSize = 800 * 1024; // Aumentado de 500KB para 800KB para melhor qualidade
   let base64 = buffer.toString('base64');
   
-  // Se a imagem for muito grande, reduzir qualidade
+  // Se a imagem for muito grande, reduzir qualidade mais suavemente
   if (buffer.length > maxSize) {
-    // Reduzir para aproximadamente 70% do tamanho original
-    const reducedBuffer = buffer.subarray(0, Math.floor(buffer.length * 0.7));
+    // Reduzir para aproximadamente 85% do tamanho original (melhor qualidade)
+    const reducedBuffer = buffer.subarray(0, Math.floor(buffer.length * 0.85));
     base64 = reducedBuffer.toString('base64');
   }
   
@@ -171,8 +171,8 @@ export async function POST(request: NextRequest) {
           pdf.addPage();
           
           // Centralizar verticalmente na página
-          const imgWidth = 150;
-          const imgHeight = 120;
+          const imgWidth = 180; // Aumentado de 150 para 180
+          const imgHeight = 140; // Aumentado de 120 para 140
           const titleHeight = 20;
           const totalContentHeight = titleHeight + imgHeight;
           const startY = (pageHeight - totalContentHeight) / 2;
@@ -187,7 +187,8 @@ export async function POST(request: NextRequest) {
           // Adicionar imagem centralizada horizontal e verticalmente
           const imgX = (pageWidth - imgWidth) / 2;
           
-          pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+          // Adicionar imagem com melhor qualidade
+          pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight, undefined, 'MEDIUM');
           
           imageCounter++;
         } catch (error) {
@@ -211,8 +212,8 @@ export async function POST(request: NextRequest) {
         pdf.addPage();
         
         // Centralizar verticalmente na página
-        const imgWidth = 150;
-        const imgHeight = 120;
+        const imgWidth = 180; // Aumentado de 150 para 180
+        const imgHeight = 140; // Aumentado de 120 para 140
         const titleHeight = 20;
         const totalContentHeight = titleHeight + imgHeight;
         const startY = (pageHeight - totalContentHeight) / 2;
@@ -226,7 +227,8 @@ export async function POST(request: NextRequest) {
         // Adicionar imagem de resultado centralizada
         const imgX = (pageWidth - imgWidth) / 2;
         
-        pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+        // Adicionar imagem de resultado com melhor qualidade
+        pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight, undefined, 'MEDIUM');
       } catch (error) {
         console.error('Erro ao processar imagem de resultado:', error);
       }
