@@ -33,3 +33,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# PDFs gerados
+*.pdf
+
+# Arquivos de documentação temporários
+*_TEMP.md
+*_BACKUP.md
+
+# Logs
+logs
+*.log
