@@ -25,13 +25,13 @@ async function imageToBase64(file: any): Promise<string> {
   const buffer = Buffer.from(arrayBuffer);
   
   // Limitar tamanho da imagem para evitar problemas de memória
-  const maxSize = 800 * 1024; // Aumentado de 500KB para 800KB para melhor qualidade
+  const maxSize = 500 * 1024; // 500KB
   let base64 = buffer.toString('base64');
   
-  // Se a imagem for muito grande, reduzir qualidade mais suavemente
+  // Se a imagem for muito grande, reduzir qualidade
   if (buffer.length > maxSize) {
-    // Reduzir para aproximadamente 85% do tamanho original (melhor qualidade)
-    const reducedBuffer = buffer.subarray(0, Math.floor(buffer.length * 0.85));
+    // Reduzir para aproximadamente 70% do tamanho original
+    const reducedBuffer = buffer.subarray(0, Math.floor(buffer.length * 0.7));
     base64 = reducedBuffer.toString('base64');
   }
   
@@ -59,14 +59,22 @@ export async function POST(request: NextRequest) {
     const endDate = formData.get('endDate') as string;
     const description = formData.get('description') as string;
     const observations = formData.get('observations') as string;
-    const serviceType = formData.get('serviceType') as string;
+    const servicesData = JSON.parse(formData.get('services') as string || '[]');
 
-    // Processar imagens normais
+    // Processar imagens com informações do serviço
     const images: any[] = [];
     const formDataEntries = Array.from(formData.entries());
     for (const [key, value] of formDataEntries) {
-      if (key.startsWith('image_') && value && typeof value === 'object' && 'arrayBuffer' in value) {
-        images.push(value);
+      if (key.startsWith('image_') && !key.includes('_serviceId') && value && typeof value === 'object' && 'arrayBuffer' in value) {
+        const imageIndex = key.replace('image_', '');
+        const serviceId = formData.get(`image_${imageIndex}_serviceId`) as string;
+        const service = servicesData.find((s: any) => s.id === serviceId);
+        
+        images.push({
+          file: value,
+          serviceId: serviceId,
+          serviceName: service?.name || 'Serviço'
+        });
       }
     }
 
@@ -129,8 +137,9 @@ export async function POST(request: NextRequest) {
     addCenteredText(`Diário de Obra – ${projectName}`, 14, true);
     yPosition += 5;
 
-    // Subtítulo
-    addCenteredText(serviceType || 'Serviços Executados', 12, true);
+    // Subtítulo com lista de serviços
+    const serviceNames = servicesData.map((s: any) => s.name).join(', ');
+    addCenteredText(serviceNames || 'Serviços Executados', 12, true);
     yPosition += 5;
 
     // Período - corrigindo timezone para evitar redução de dia
@@ -140,10 +149,10 @@ export async function POST(request: NextRequest) {
     yPosition += 15;
 
     // Relatório fotográfico
-    addText(`Relatório fotográfico referente à execução da ${serviceType || 'obra'}.`, 12);
+    addText(`Relatório fotográfico referente à execução dos serviços.`, 12);
     yPosition += 5;
 
-    addText(serviceType || 'Descrição dos serviços executados.', 12, true);
+    addText('Descrição dos serviços executados:', 12, true);
     yPosition += 5;
 
     // Descrição detalhada
@@ -161,45 +170,44 @@ export async function POST(request: NextRequest) {
         yPosition += 10;
       }
       
-      for (let i = 0; i < maxImages; i++) {
-        const image = images[i];
-        try {
-          console.log(`Processando imagem ${i + 1} de ${maxImages}`);
-          const base64 = await imageToBase64(image);
-          
-          // Nova página para cada imagem
-          pdf.addPage();
-          
-          // Centralizar verticalmente na página
-          const imgWidth = 180; // Aumentado de 150 para 180
-          const imgHeight = 140; // Aumentado de 120 para 140
-          const titleHeight = 20;
-          const totalContentHeight = titleHeight + imgHeight;
-          const startY = (pageHeight - totalContentHeight) / 2;
-          
-          // Resetar posição Y para centralizar
-          yPosition = startY;
-          
-          // Adicionar título da imagem centralizado
-          addCenteredText(`${serviceType || 'Serviço'} – Imagem ${imageCounter}`, 12, true);
-          yPosition += 10;
-          
-          // Adicionar imagem centralizada horizontal e verticalmente
-          const imgX = (pageWidth - imgWidth) / 2;
-          
-          // Adicionar imagem com melhor qualidade
-          pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight, undefined, 'MEDIUM');
-          
-          imageCounter++;
-        } catch (error) {
-          console.error(`Erro ao processar imagem ${i + 1}:`, error);
-          // Continuar com as próximas imagens mesmo se uma falhar
-          pdf.addPage();
-          yPosition = margin;
-          addText(`Erro ao carregar imagem ${imageCounter}`, 10);
-          imageCounter++;
+              for (let i = 0; i < maxImages; i++) {
+          const imageData = images[i];
+          try {
+            console.log(`Processando imagem ${i + 1} de ${maxImages}`);
+            const base64 = await imageToBase64(imageData.file);
+            
+            // Nova página para cada imagem
+            pdf.addPage();
+            
+            // Centralizar verticalmente na página
+            const imgWidth = 150;
+            const imgHeight = 120;
+            const titleHeight = 20;
+            const totalContentHeight = titleHeight + imgHeight;
+            const startY = (pageHeight - totalContentHeight) / 2;
+            
+            // Resetar posição Y para centralizar
+            yPosition = startY;
+            
+            // Adicionar título da imagem centralizado
+            addCenteredText(`${imageData.serviceName} – Imagem ${imageCounter}`, 12, true);
+            yPosition += 10;
+            
+            // Adicionar imagem centralizada horizontal e verticalmente
+            const imgX = (pageWidth - imgWidth) / 2;
+            
+            pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+            
+            imageCounter++;
+          } catch (error) {
+            console.error(`Erro ao processar imagem ${i + 1}:`, error);
+            // Continuar com as próximas imagens mesmo se uma falhar
+            pdf.addPage();
+            yPosition = margin;
+            addText(`Erro ao carregar imagem ${imageCounter}`, 10);
+            imageCounter++;
+          }
         }
-      }
     }
 
     // Seção de resultado com imagem separada
@@ -212,8 +220,8 @@ export async function POST(request: NextRequest) {
         pdf.addPage();
         
         // Centralizar verticalmente na página
-        const imgWidth = 180; // Aumentado de 150 para 180
-        const imgHeight = 140; // Aumentado de 120 para 140
+        const imgWidth = 150;
+        const imgHeight = 120;
         const titleHeight = 20;
         const totalContentHeight = titleHeight + imgHeight;
         const startY = (pageHeight - totalContentHeight) / 2;
@@ -227,8 +235,7 @@ export async function POST(request: NextRequest) {
         // Adicionar imagem de resultado centralizada
         const imgX = (pageWidth - imgWidth) / 2;
         
-        // Adicionar imagem de resultado com melhor qualidade
-        pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight, undefined, 'MEDIUM');
+        pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
       } catch (error) {
         console.error('Erro ao processar imagem de resultado:', error);
       }

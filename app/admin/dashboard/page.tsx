@@ -12,15 +12,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   LogOut, 
   FileText, 
-  Upload, 
   Download, 
   Calendar,
   MapPin,
   User,
   Camera,
   Plus,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
+
+interface ServiceData {
+  id: string;
+  name: string;
+  images: File[];
+}
 
 interface ReportData {
   clientName: string;
@@ -30,8 +36,7 @@ interface ReportData {
   endDate: string;
   description: string;
   observations: string;
-  serviceType: string;
-  images: File[];
+  services: ServiceData[];
   resultImage: File | null;
 }
 
@@ -46,10 +51,10 @@ export default function AdminDashboard() {
     endDate: new Date().toISOString().split('T')[0],
     description: '',
     observations: '',
-    serviceType: '',
-    images: [],
+    services: [{ id: '1', name: '', images: [] }],
     resultImage: null
   });
+  const [activeServiceId, setActiveServiceId] = useState('1');
   const [message, setMessage] = useState('');
   const router = useRouter();
 
@@ -68,21 +73,77 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   };
 
+  // Funções para gerenciar serviços
+  const addService = () => {
+    const newId = Date.now().toString();
+    setReportData(prev => ({
+      ...prev,
+      services: [...prev.services, { id: newId, name: '', images: [] }]
+    }));
+    setActiveServiceId(newId);
+  };
+
+  const removeService = (serviceId: string) => {
+    if (reportData.services.length <= 1) return;
+    
+    const newServices = reportData.services.filter(service => service.id !== serviceId);
+    setReportData(prev => ({
+      ...prev,
+      services: newServices
+    }));
+    
+    if (activeServiceId === serviceId) {
+      setActiveServiceId(newServices[0].id);
+    }
+  };
+
+  const updateServiceName = (serviceId: string, name: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, name }
+          : service
+      )
+    }));
+  };
+
+  // Funções para gerenciar imagens
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setReportData(prev => ({
       ...prev,
-      images: [...prev.images, ...files]
+      services: prev.services.map(service => 
+        service.id === activeServiceId 
+          ? { ...service, images: [...service.images, ...files] }
+          : service
+      )
     }));
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = (serviceId: string, index: number) => {
     setReportData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, images: service.images.filter((_, i) => i !== index) }
+          : service
+      )
     }));
   };
 
+  const removeAllImagesFromService = (serviceId: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, images: [] }
+          : service
+      )
+    }));
+  };
+
+  // Funções para imagem de resultado
   const handleResultImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setReportData(prev => ({
@@ -98,10 +159,16 @@ export default function AdminDashboard() {
     }));
   };
 
+  // Funções auxiliares
+  const getActiveService = () => {
+    return reportData.services.find(service => service.id === activeServiceId) || reportData.services[0];
+  };
+
+  const getTotalImages = () => {
+    return reportData.services.reduce((total, service) => total + service.images.length, 0);
+  };
+
   const generatePDF = async () => {
-    console.log('generatePDF chamado');
-    console.log('Dados do relatório:', reportData);
-    
     setLoading(true);
     setMessage('');
 
@@ -118,20 +185,16 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (!reportData.serviceType) {
-      setMessage('Por favor, preencha o tipo de serviço.');
+    // Verificar se todos os serviços têm nome
+    const servicesWithoutName = reportData.services.filter(service => !service.name.trim());
+    if (servicesWithoutName.length > 0) {
+      setMessage('Por favor, preencha o nome de todos os serviços.');
       setLoading(false);
       return;
     }
 
-    if (!reportData.startDate) {
-      setMessage('Por favor, preencha a data inicial.');
-      setLoading(false);
-      return;
-    }
-
-    if (!reportData.endDate) {
-      setMessage('Por favor, preencha a data final.');
+    if (!reportData.startDate || !reportData.endDate) {
+      setMessage('Por favor, preencha as datas inicial e final.');
       setLoading(false);
       return;
     }
@@ -143,25 +206,23 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Verificar se há imagens
-    if (reportData.images.length === 0) {
-      setMessage('Por favor, adicione pelo menos uma imagem.');
+    // Verificar se há imagens em pelo menos um serviço
+    const totalImages = getTotalImages();
+    if (totalImages === 0) {
+      setMessage('Por favor, adicione pelo menos uma imagem em algum serviço.');
       setLoading(false);
       return;
     }
 
-    // Verificar número de imagens
-    if (reportData.images.length > 20) {
-      setMessage('Máximo de 20 imagens permitido. Por favor, remova algumas imagens.');
+    // Verificar se algum serviço tem mais de 20 imagens
+    const serviceWithTooManyImages = reportData.services.find(service => service.images.length > 20);
+    if (serviceWithTooManyImages) {
+      setMessage(`O serviço "${serviceWithTooManyImages.name}" tem mais de 20 imagens. Máximo 20 por serviço.`);
       setLoading(false);
       return;
     }
 
-    if (reportData.images.length > 15) {
-      setMessage(`Processando ${reportData.images.length} imagens. Apenas as primeiras 15 serão incluídas no PDF...`);
-    } else {
-      setMessage(`Processando ${reportData.images.length} imagem(ns)...`);
-    }
+    setMessage(`Processando ${totalImages} imagem(ns) de ${reportData.services.length} serviço(s)...`);
 
     try {
       const formData = new FormData();
@@ -172,10 +233,21 @@ export default function AdminDashboard() {
       formData.append('endDate', reportData.endDate);
       formData.append('description', reportData.description);
       formData.append('observations', reportData.observations);
-      formData.append('serviceType', reportData.serviceType);
       
-      reportData.images.forEach((image, index) => {
-        formData.append(`image_${index}`, image);
+      // Adicionar dados dos serviços
+      formData.append('services', JSON.stringify(reportData.services.map(service => ({
+        id: service.id,
+        name: service.name
+      }))));
+      
+      // Adicionar imagens de todos os serviços
+      let imageIndex = 0;
+      reportData.services.forEach((service) => {
+        service.images.forEach((image) => {
+          formData.append(`image_${imageIndex}`, image);
+          formData.append(`image_${imageIndex}_serviceId`, service.id);
+          imageIndex++;
+        });
       });
 
       // Adicionar imagem de resultado se existir
@@ -185,7 +257,7 @@ export default function AdminDashboard() {
 
       // Aumentar timeout para muitas imagens
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutos
 
       const response = await fetch('/api/admin/generate-report', {
         method: 'POST',
@@ -240,6 +312,8 @@ export default function AdminDashboard() {
     return null;
   }
 
+  const activeService = getActiveService();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -260,337 +334,333 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <Tabs defaultValue="new-report" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="new-report">Novo Relatório</TabsTrigger>
-              <TabsTrigger value="reports-list">Relatórios</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="new-report" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="w-5 h-5 mr-2" />
-                    Criar Novo Relatório de Obra
-                  </CardTitle>
-                  <CardDescription>
-                    Preencha os dados abaixo para gerar um relatório em PDF
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="clientName">Nome do Cliente</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="clientName"
-                          placeholder="Nome do cliente"
-                          value={reportData.clientName}
-                          onChange={(e) => setReportData(prev => ({ ...prev, clientName: e.target.value }))}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="projectName">Local da Obra</Label>
-                      <Input
-                        id="projectName"
-                        placeholder="Ex: Restaurante, Escritório, Residência"
-                        value={reportData.projectName}
-                        onChange={(e) => setReportData(prev => ({ ...prev, projectName: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Localização</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="location"
-                          placeholder="Endereço da obra"
-                          value={reportData.location}
-                          onChange={(e) => setReportData(prev => ({ ...prev, location: e.target.value }))}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="startDate">Data Inicial</Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="startDate"
-                          type="date"
-                          value={reportData.startDate}
-                          onChange={(e) => setReportData(prev => ({ ...prev, startDate: e.target.value }))}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="endDate">Data Final</Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="endDate"
-                          type="date"
-                          value={reportData.endDate}
-                          onChange={(e) => setReportData(prev => ({ ...prev, endDate: e.target.value }))}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="serviceType">Tipo de Serviço</Label>
-                      <Input
-                        id="serviceType"
-                        placeholder="Ex: Limpeza das janelas e o ACM"
-                        value={reportData.serviceType}
-                        onChange={(e) => setReportData(prev => ({ ...prev, serviceType: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Descrição Detalhada dos Trabalhos</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Descreva detalhadamente os trabalhos realizados, materiais utilizados, equipamentos de segurança, etc..."
-                        value={reportData.description}
-                        onChange={(e) => setReportData(prev => ({ ...prev, description: e.target.value }))}
-                        rows={6}
-                      />
-                    </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="observations">Observações</Label>
-                    <Textarea
-                      id="observations"
-                      placeholder="Observações adicionais..."
-                      value={reportData.observations}
-                      onChange={(e) => setReportData(prev => ({ ...prev, observations: e.target.value }))}
-                      rows={3}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="w-5 h-5 mr-2" />
+                Criar Novo Relatório de Obra
+              </CardTitle>
+              <CardDescription>
+                Preencha os dados abaixo para gerar um relatório em PDF
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Informações Básicas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientName">Nome do Cliente</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="clientName"
+                      placeholder="Nome do cliente"
+                      value={reportData.clientName}
+                      onChange={(e) => setReportData(prev => ({ ...prev, clientName: e.target.value }))}
+                      className="pl-10"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="projectName">Local da Obra</Label>
+                  <Input
+                    id="projectName"
+                    placeholder="Ex: Restaurante, Escritório, Residência"
+                    value={reportData.projectName}
+                    onChange={(e) => setReportData(prev => ({ ...prev, projectName: e.target.value }))}
+                  />
+                </div>
+              </div>
 
-                  <div className="space-y-4">
-                    <Label>Imagens da Obra</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                      <div className="text-center">
-                        <Camera className="mx-auto h-12 w-12 text-gray-400" />
-                        <div className="mt-4">
-                          <Label htmlFor="images" className="cursor-pointer">
-                            <span className="mt-2 block text-sm font-medium text-gray-900">
-                              Clique para adicionar imagens
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Localização</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="location"
+                      placeholder="Endereço da obra"
+                      value={reportData.location}
+                      onChange={(e) => setReportData(prev => ({ ...prev, location: e.target.value }))}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Data Inicial</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={reportData.startDate}
+                      onChange={(e) => setReportData(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">Data Final</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={reportData.endDate}
+                      onChange={(e) => setReportData(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição Detalhada dos Trabalhos</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Descreva detalhadamente os trabalhos realizados, materiais utilizados, equipamentos de segurança, etc..."
+                  value={reportData.description}
+                  onChange={(e) => setReportData(prev => ({ ...prev, description: e.target.value }))}
+                  rows={6}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="observations">Observações</Label>
+                <Textarea
+                  id="observations"
+                  placeholder="Observações adicionais..."
+                  value={reportData.observations}
+                  onChange={(e) => setReportData(prev => ({ ...prev, observations: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+
+              {/* Seção de Serviços */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label className="text-lg font-semibold">Serviços ({reportData.services.length})</Label>
+                  <Button onClick={addService} variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Serviço
+                  </Button>
+                </div>
+
+                {/* Abas dos Serviços */}
+                <div className="border rounded-lg">
+                  <div className="flex border-b overflow-x-auto">
+                    {reportData.services.map((service, index) => (
+                      <div key={service.id} className="flex items-center">
+                        <button
+                          onClick={() => setActiveServiceId(service.id)}
+                          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                            activeServiceId === service.id
+                              ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          Serviço {index + 1}
+                          {service.images.length > 0 && (
+                            <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                              {service.images.length}
                             </span>
-                            <Input
-                              id="images"
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="hidden"
-                            />
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {reportData.images.length > 0 && (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">
-                            {reportData.images.length} imagem(ns) selecionada(s)
-                            {reportData.images.length > 15 && (
-                              <span className="text-orange-600 ml-2">
-                                (Apenas as primeiras 15 serão incluídas no PDF)
-                              </span>
-                            )}
-                            {reportData.images.length > 20 && (
-                              <span className="text-red-600 ml-2">
-                                (Máximo 20 imagens permitido)
-                              </span>
-                            )}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setReportData(prev => ({ ...prev, images: [] }))}
+                          )}
+                        </button>
+                        {reportData.services.length > 1 && (
+                          <button
+                            onClick={() => removeService(service.id)}
+                            className="p-1 text-red-500 hover:text-red-700"
                           >
-                            Remover Todas
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
-                          {reportData.images.map((image, index) => (
-                            <div key={index} className="relative">
-                              <img
-                                src={URL.createObjectURL(image)}
-                                alt={`Imagem ${index + 1}`}
-                                className={`w-full h-20 object-cover rounded-lg ${
-                                  index >= 15 ? 'opacity-50' : ''
-                                }`}
-                              />
-                              {index >= 15 && (
-                                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                  <span className="text-white text-xs">Não incluída</span>
-                                </div>
-                              )}
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 h-5 w-5 p-0"
-                                onClick={() => removeImage(index)}
-                              >
-                                <Trash2 className="h-2 w-2" />
-                              </Button>
-                              <span className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
-                                {index + 1}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
 
-                  {/* Seção da Imagem de Resultado */}
-                  <div className="space-y-4">
-                    <Label>Imagem de Resultado (Opcional)</Label>
-                    <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-green-50">
-                      <div className="text-center">
-                        <Camera className="mx-auto h-12 w-12 text-green-400" />
-                        <div className="mt-4">
-                          <Label htmlFor="resultImage" className="cursor-pointer">
-                            <span className="mt-2 block text-sm font-medium text-green-900">
-                              Clique para adicionar imagem de resultado
-                            </span>
-                            <Input
-                              id="resultImage"
-                              type="file"
-                              accept="image/*"
-                              onChange={handleResultImageUpload}
-                              className="hidden"
-                            />
-                          </Label>
-                        </div>
-                                                 <p className="text-xs text-green-600 mt-2">
-                           Esta imagem aparecerá na seção &quot;Resultado&quot; do PDF
-                         </p>
-                      </div>
+                  {/* Conteúdo do Serviço Ativo */}
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`service-name-${activeServiceId}`}>Nome do Serviço</Label>
+                      <Input
+                        id={`service-name-${activeServiceId}`}
+                        placeholder="Ex: Limpeza das janelas e o ACM"
+                        value={activeService.name}
+                        onChange={(e) => updateServiceName(activeServiceId, e.target.value)}
+                      />
                     </div>
 
-                    {reportData.resultImage && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-green-600 font-medium">
-                            Imagem de resultado selecionada
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={removeResultImage}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Remover
-                          </Button>
-                        </div>
-                        <div className="relative inline-block">
-                          <img
-                            src={URL.createObjectURL(reportData.resultImage)}
-                            alt="Imagem de resultado"
-                            className="w-32 h-24 object-cover rounded-lg border-2 border-green-200"
-                          />
-                          <div className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-2 py-1 rounded">
-                            Resultado
+                    {/* Upload de Imagens do Serviço */}
+                    <div className="space-y-4">
+                      <Label>Imagens do Serviço (Máximo 20 por serviço)</Label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                        <div className="text-center">
+                          <Camera className="mx-auto h-12 w-12 text-gray-400" />
+                          <div className="mt-4">
+                            <Label htmlFor={`images-${activeServiceId}`} className="cursor-pointer">
+                              <span className="mt-2 block text-sm font-medium text-gray-900">
+                                Clique para adicionar imagens
+                              </span>
+                              <Input
+                                id={`images-${activeServiceId}`}
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </Label>
                           </div>
                         </div>
                       </div>
-                    )}
+
+                      {activeService.images.length > 0 && (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">
+                              {activeService.images.length} imagem(ns) selecionada(s)
+                              {activeService.images.length > 20 && (
+                                <span className="text-red-600 ml-2">
+                                  (Máximo 20 imagens por serviço)
+                                </span>
+                              )}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeAllImagesFromService(activeServiceId)}
+                            >
+                              Remover Todas
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
+                            {activeService.images.map((image, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={URL.createObjectURL(image)}
+                                  alt={`Imagem ${index + 1}`}
+                                  className={`w-full h-20 object-cover rounded-lg ${
+                                    index >= 20 ? 'opacity-50' : ''
+                                  }`}
+                                />
+                                {index >= 20 && (
+                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-xs">Não incluída</span>
+                                  </div>
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-5 w-5 p-0"
+                                  onClick={() => removeImage(activeServiceId, index)}
+                                >
+                                  <Trash2 className="h-2 w-2" />
+                                </Button>
+                                <span className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
+                                  {index + 1}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                </div>
+              </div>
 
-                  {message && (
-                    <Alert className={message.includes('Erro') || message.includes('Máximo') ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50'}>
-                      <AlertDescription className={message.includes('Erro') || message.includes('Máximo') ? 'text-red-700' : 'text-blue-700'}>
-                        {message}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Indicador de campos obrigatórios */}
-                  {(!reportData.clientName || !reportData.projectName || !reportData.serviceType) && (
-                    <Alert className="border-yellow-200 bg-yellow-50">
-                      <AlertDescription className="text-yellow-700">
-                        Preencha todos os campos obrigatórios: 
-                        {!reportData.clientName && ' Nome do Cliente'}
-                        {!reportData.projectName && ' Local da Obra'}
-                        {!reportData.serviceType && ' Tipo de Serviço'}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Debug info - remover em produção */}
-                  <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
-                    <strong>Status do Botão:</strong><br/>
-                    • Loading: {loading ? '✅' : '❌'}<br/>
-                    • Cliente: {reportData.clientName ? '✅' : '❌'}<br/>
-                    • Local: {reportData.projectName ? '✅' : '❌'}<br/>
-                    • Serviço: {reportData.serviceType ? '✅' : '❌'}<br/>
-                    • Data Inicial: {reportData.startDate ? '✅' : '❌'}<br/>
-                    • Data Final: {reportData.endDate ? '✅' : '❌'}<br/>
-                    • Imagens: {reportData.images.length} (min: 1, max: 20)<br/>
-                    • Imagem Resultado: {reportData.resultImage ? '✅' : '❌ (opcional)'}<br/>
-                    • Botão habilitado: {
-                      !loading && 
-                      reportData.clientName && 
-                      reportData.projectName && 
-                      reportData.serviceType &&
-                      reportData.startDate &&
-                      reportData.endDate &&
-                      reportData.images.length > 0 &&
-                      reportData.images.length <= 20 ? '✅' : '❌'
-                    }
+              {/* Seção da Imagem de Resultado */}
+              <div className="space-y-4">
+                <Label>Imagem de Resultado (Opcional)</Label>
+                <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-green-50">
+                  <div className="text-center">
+                    <Camera className="mx-auto h-12 w-12 text-green-400" />
+                    <div className="mt-4">
+                      <Label htmlFor="resultImage" className="cursor-pointer">
+                        <span className="mt-2 block text-sm font-medium text-green-900">
+                          Clique para adicionar imagem de resultado
+                        </span>
+                        <Input
+                          id="resultImage"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleResultImageUpload}
+                          className="hidden"
+                        />
+                      </Label>
+                    </div>
+                    <p className="text-xs text-green-600 mt-2">
+                      Esta imagem aparecerá na seção &quot;Resultado&quot; do PDF
+                    </p>
                   </div>
+                </div>
 
-                  <Button 
-                    onClick={() => {
-                      console.log('Botão clicado!');
-                      generatePDF();
-                    }}
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                {reportData.resultImage && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-green-600 font-medium">
+                        Imagem de resultado selecionada
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={removeResultImage}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                    <div className="relative inline-block">
+                      <img
+                        src={URL.createObjectURL(reportData.resultImage)}
+                        alt="Imagem de resultado"
+                        className="w-32 h-24 object-cover rounded-lg border-2 border-green-200"
+                      />
+                      <div className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                        Resultado
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            <TabsContent value="reports-list">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Relatórios Gerados</CardTitle>
-                  <CardDescription>
-                    Histórico de relatórios criados
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-500 text-center py-8">
-                    Funcionalidade em desenvolvimento...
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+              {message && (
+                <Alert className={message.includes('Erro') || message.includes('Máximo') ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50'}>
+                  <AlertDescription className={message.includes('Erro') || message.includes('Máximo') ? 'text-red-700' : 'text-blue-700'}>
+                    {message}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Resumo */}
+              <div className="text-xs text-gray-500 p-3 bg-gray-100 rounded">
+                <strong>Resumo:</strong><br/>
+                • Total de serviços: {reportData.services.length}<br/>
+                • Total de imagens: {getTotalImages()}<br/>
+                • Imagem de resultado: {reportData.resultImage ? '✅' : '❌ (opcional)'}<br/>
+                • Campos obrigatórios: {
+                  reportData.clientName && 
+                  reportData.projectName && 
+                  reportData.services.every(s => s.name.trim()) &&
+                  reportData.startDate &&
+                  reportData.endDate &&
+                  getTotalImages() > 0 ? '✅ Completo' : '❌ Incompleto'
+                }
+              </div>
+
+              <Button 
+                onClick={generatePDF}
+                disabled={loading}
+                className="w-full"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
