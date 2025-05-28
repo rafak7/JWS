@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 
 // Configuração de runtime para esta API route
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutos
+export const maxDuration = 60; // 60 segundos (máximo para plano hobby)
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
