@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';
 import { jsPDF } from 'jspdf';
 
+// Configuração de runtime para esta API route
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutos
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Função para verificar autenticação
@@ -41,29 +45,43 @@ async function imageToBase64(file: any): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Iniciando geração de relatório...');
+    
     // Verificar autenticação
     const user = verifyToken(request);
     if (!user) {
+      console.log('Erro de autenticação');
       return NextResponse.json(
         { message: 'Token inválido ou expirado' },
         { status: 401 }
       );
     }
 
+    console.log('Autenticação OK');
+
     // Processar FormData
+    console.log('Processando FormData...');
     const formData = await request.formData();
-    const clientName = formData.get('clientName') as string;
-    const projectName = formData.get('projectName') as string;
-    const location = formData.get('location') as string;
-    const startDate = formData.get('startDate') as string;
-    const endDate = formData.get('endDate') as string;
-    const description = formData.get('description') as string;
-    const observations = formData.get('observations') as string;
-    const servicesData = JSON.parse(formData.get('services') as string || '[]');
+    
+    console.log('Dados básicos processados');
+    
+    let servicesData = [];
+    try {
+      servicesData = JSON.parse(formData.get('services') as string || '[]');
+      console.log('Serviços processados:', servicesData.length);
+    } catch (error) {
+      console.error('Erro ao processar serviços:', error);
+      return NextResponse.json(
+        { message: 'Erro ao processar dados dos serviços' },
+        { status: 400 }
+      );
+    }
 
     // Processar imagens com informações do serviço
+    console.log('Processando imagens...');
     const images: any[] = [];
     const formDataEntries = Array.from(formData.entries());
+    
     for (const [key, value] of formDataEntries) {
       if (key.startsWith('image_') && !key.includes('_serviceId') && value && typeof value === 'object' && 'arrayBuffer' in value) {
         const imageIndex = key.replace('image_', '');
@@ -77,6 +95,8 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+    
+    console.log('Total de imagens processadas:', images.length);
 
     // Processar imagem de resultado separada
     const resultImage = formData.get('resultImage');
@@ -129,85 +149,129 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Cabeçalho principal
+    // Página inicial com resumo geral
     addCenteredText('JWS EMPREITEIRA', 16, true);
     yPosition += 10;
 
-    // Título do diário
-    addCenteredText(`Diário de Obra – ${projectName}`, 14, true);
+    addCenteredText('Diário de Obra', 14, true);
+    yPosition += 10;
+
+    // Lista de serviços na página inicial
+    addText('Serviços Executados:', 12, true);
     yPosition += 5;
 
-    // Subtítulo com lista de serviços
-    const serviceNames = servicesData.map((s: any) => s.name).join(', ');
-    addCenteredText(serviceNames || 'Serviços Executados', 12, true);
-    yPosition += 5;
+    servicesData.forEach((service: any, index: number) => {
+      const serviceStartDate = new Date(service.startDate + 'T12:00:00');
+      const serviceEndDate = new Date(service.endDate + 'T12:00:00');
+      addText(`${index + 1}. ${service.name} (${serviceStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${serviceEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})`, 11);
+    });
 
-    // Período - corrigindo timezone para evitar redução de dia
-    const startDateObj = new Date(startDate + 'T12:00:00');
-    const endDateObj = new Date(endDate + 'T12:00:00');
-    addCenteredText(`Período: ${startDateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${endDateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`, 12);
+    yPosition += 10;
+    addText('Relatório fotográfico referente à execução dos serviços.', 12);
     yPosition += 15;
 
-    // Relatório fotográfico
-    addText(`Relatório fotográfico referente à execução dos serviços.`, 12);
-    yPosition += 5;
-
-    addText('Descrição dos serviços executados:', 12, true);
-    yPosition += 5;
-
-    // Descrição detalhada
-    const detailedDescription = `Serviço realizado entre os dias ${startDateObj.toLocaleDateString('pt-BR')} e ${endDateObj.toLocaleDateString('pt-BR')}. ${description || 'Atividades executadas conforme especificações técnicas.'} ${observations || ''}`;
-    addText(detailedDescription, 11);
-    yPosition += 15;
-
-    // Adicionar imagens com legendas (máximo 15 imagens para evitar problemas)
+    // Organizar imagens por serviço e processar cada serviço separadamente
     if (images.length > 0) {
-      let imageCounter = 1;
-      const maxImages = Math.min(images.length, 15); // Limitar a 15 imagens
+      // Agrupar imagens por serviço
+      const imagesByService = new Map();
       
-      if (images.length > 15) {
-        addText(`Nota: Exibindo as primeiras 15 imagens de ${images.length} total.`, 10);
-        yPosition += 10;
-      }
+      images.forEach(imageData => {
+        if (!imagesByService.has(imageData.serviceId)) {
+          imagesByService.set(imageData.serviceId, []);
+        }
+        imagesByService.get(imageData.serviceId).push(imageData);
+      });
       
-              for (let i = 0; i < maxImages; i++) {
-          const imageData = images[i];
-          try {
-            console.log(`Processando imagem ${i + 1} de ${maxImages}`);
-            const base64 = await imageToBase64(imageData.file);
-            
-            // Nova página para cada imagem
-            pdf.addPage();
-            
-            // Centralizar verticalmente na página
-            const imgWidth = 150;
-            const imgHeight = 120;
-            const titleHeight = 20;
-            const totalContentHeight = titleHeight + imgHeight;
-            const startY = (pageHeight - totalContentHeight) / 2;
-            
-            // Resetar posição Y para centralizar
-            yPosition = startY;
-            
-            // Adicionar título da imagem centralizado
-            addCenteredText(`${imageData.serviceName} – Imagem ${imageCounter}`, 12, true);
+      console.log(`Processando ${imagesByService.size} serviços com imagens`);
+      
+      // Processar cada serviço separadamente
+      for (const service of servicesData) {
+        const serviceImages = imagesByService.get(service.id) || [];
+        
+        if (serviceImages.length > 0) {
+          console.log(`Processando serviço: ${service.name} com ${serviceImages.length} imagens`);
+          
+          // Nova página para o cabeçalho do serviço
+          pdf.addPage();
+          yPosition = margin + 50;
+          
+          // Cabeçalho do serviço
+          addCenteredText('JWS EMPREITEIRA', 16, true);
+          yPosition += 10;
+          
+          addCenteredText('Diário de Obra', 14, true);
+          yPosition += 10;
+          
+          // Informações específicas do serviço
+          const serviceStartDate = new Date(service.startDate + 'T12:00:00');
+          const serviceEndDate = new Date(service.endDate + 'T12:00:00');
+          
+          addCenteredText(`${service.name}`, 14, true);
+          yPosition += 5;
+          
+          addCenteredText(`Período: ${serviceStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${serviceEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`, 12);
+          yPosition += 15;
+          
+          addText(`Relatório fotográfico referente à execução do serviço.`, 12);
+          
+          // Adicionar observações se existirem
+          if (service.observations && service.observations.trim()) {
             yPosition += 10;
-            
-            // Adicionar imagem centralizada horizontal e verticalmente
-            const imgX = (pageWidth - imgWidth) / 2;
-            
-            pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
-            
-            imageCounter++;
-          } catch (error) {
-            console.error(`Erro ao processar imagem ${i + 1}:`, error);
-            // Continuar com as próximas imagens mesmo se uma falhar
-            pdf.addPage();
-            yPosition = margin;
-            addText(`Erro ao carregar imagem ${imageCounter}`, 10);
-            imageCounter++;
+            addText('Observações:', 12, true);
+            addText(service.observations, 11);
+          }
+          
+          yPosition += 15;
+          
+          // Processar imagens do serviço (máximo 20 por serviço)
+          const maxImagesPerService = Math.min(serviceImages.length, 20);
+          
+          if (serviceImages.length > 20) {
+            addText(`Nota: Exibindo as primeiras 20 imagens de ${serviceImages.length} total para este serviço.`, 10);
+            yPosition += 10;
+          }
+          
+          let imageCounter = 1;
+          for (let i = 0; i < maxImagesPerService; i++) {
+            const imageData = serviceImages[i];
+            try {
+              console.log(`Processando imagem ${i + 1} de ${maxImagesPerService} do serviço ${service.name}`);
+              const base64 = await imageToBase64(imageData.file);
+              
+              // Nova página para cada imagem
+              pdf.addPage();
+              
+              // Centralizar verticalmente na página
+              const imgWidth = 150;
+              const imgHeight = 120;
+              const titleHeight = 20;
+              const totalContentHeight = titleHeight + imgHeight;
+              const startY = (pageHeight - totalContentHeight) / 2;
+              
+              // Resetar posição Y para centralizar
+              yPosition = startY;
+              
+              // Adicionar título da imagem centralizado
+              addCenteredText(`${service.name} – Imagem ${imageCounter}`, 12, true);
+              yPosition += 10;
+              
+              // Adicionar imagem centralizada horizontal e verticalmente
+              const imgX = (pageWidth - imgWidth) / 2;
+              
+              pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+              
+              imageCounter++;
+            } catch (error) {
+              console.error(`Erro ao processar imagem ${i + 1} do serviço ${service.name}:`, error);
+              // Continuar com as próximas imagens mesmo se uma falhar
+              pdf.addPage();
+              yPosition = margin;
+              addText(`Erro ao carregar imagem ${imageCounter}`, 10);
+              imageCounter++;
+            }
           }
         }
+      }
     }
 
     // Seção de resultado com imagem separada
@@ -241,14 +305,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Informações do projeto no final
-    pdf.addPage();
-    yPosition = margin + 50; // Espaço do topo
-    addText('INFORMAÇÕES DO PROJETO:', 12, true);
-    addText(`Cliente: ${clientName}`, 11);
-    addText(`Local: ${location}`, 11);
-    addText(`Data de execução: ${startDateObj.toLocaleDateString('pt-BR')} a ${endDateObj.toLocaleDateString('pt-BR')}`, 11);
-
     // Gerar PDF como buffer
     const pdfBuffer = pdf.output('arraybuffer');
 
@@ -257,14 +313,25 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="diario_obra_${projectName.replace(/\s+/g, '_')}_${startDate}.pdf"`,
+        'Content-Disposition': `attachment; filename="relatorio_obra_${Date.now()}.pdf"`,
       },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao gerar relatório:', error);
+    
+    // Retornar erro mais específico
+    let errorMessage = 'Erro interno do servidor';
+    if (error.message) {
+      errorMessage = `Erro: ${error.message}`;
+    }
+    
     return NextResponse.json(
-      { message: 'Erro interno do servidor' },
+      { 
+        message: errorMessage,
+        details: error.toString(),
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

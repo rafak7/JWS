@@ -14,8 +14,6 @@ import {
   FileText, 
   Download, 
   Calendar,
-  MapPin,
-  User,
   Camera,
   Plus,
   Trash2,
@@ -25,17 +23,13 @@ import {
 interface ServiceData {
   id: string;
   name: string;
+  startDate: string;
+  endDate: string;
+  observations: string;
   images: File[];
 }
 
 interface ReportData {
-  clientName: string;
-  projectName: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-  observations: string;
   services: ServiceData[];
   resultImage: File | null;
 }
@@ -44,14 +38,14 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportData>({
-    clientName: '',
-    projectName: '',
-    location: '',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    description: '',
-    observations: '',
-    services: [{ id: '1', name: '', images: [] }],
+    services: [{ 
+      id: '1', 
+      name: '', 
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      observations: '',
+      images: [] 
+    }],
     resultImage: null
   });
   const [activeServiceId, setActiveServiceId] = useState('1');
@@ -78,7 +72,14 @@ export default function AdminDashboard() {
     const newId = Date.now().toString();
     setReportData(prev => ({
       ...prev,
-      services: [...prev.services, { id: newId, name: '', images: [] }]
+      services: [...prev.services, { 
+        id: newId, 
+        name: '', 
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
+        observations: '',
+        images: [] 
+      }]
     }));
     setActiveServiceId(newId);
   };
@@ -103,6 +104,39 @@ export default function AdminDashboard() {
       services: prev.services.map(service => 
         service.id === serviceId 
           ? { ...service, name }
+          : service
+      )
+    }));
+  };
+
+  const updateServiceStartDate = (serviceId: string, startDate: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, startDate }
+          : service
+      )
+    }));
+  };
+
+  const updateServiceEndDate = (serviceId: string, endDate: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, endDate }
+          : service
+      )
+    }));
+  };
+
+  const updateServiceObservations = (serviceId: string, observations: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, observations }
           : service
       )
     }));
@@ -172,19 +206,6 @@ export default function AdminDashboard() {
     setLoading(true);
     setMessage('');
 
-    // Validações básicas
-    if (!reportData.clientName) {
-      setMessage('Por favor, preencha o nome do cliente.');
-      setLoading(false);
-      return;
-    }
-
-    if (!reportData.projectName) {
-      setMessage('Por favor, preencha o local da obra.');
-      setLoading(false);
-      return;
-    }
-
     // Verificar se todos os serviços têm nome
     const servicesWithoutName = reportData.services.filter(service => !service.name.trim());
     if (servicesWithoutName.length > 0) {
@@ -193,15 +214,20 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (!reportData.startDate || !reportData.endDate) {
-      setMessage('Por favor, preencha as datas inicial e final.');
+    // Verificar se todos os serviços têm datas
+    const servicesWithoutDates = reportData.services.filter(service => !service.startDate || !service.endDate);
+    if (servicesWithoutDates.length > 0) {
+      setMessage('Por favor, preencha as datas de todos os serviços.');
       setLoading(false);
       return;
     }
 
-    // Verificar se a data final é posterior à inicial
-    if (new Date(reportData.endDate) < new Date(reportData.startDate)) {
-      setMessage('A data final deve ser posterior à data inicial.');
+    // Verificar se as datas finais são posteriores às iniciais em cada serviço
+    const servicesWithInvalidDates = reportData.services.filter(service => 
+      new Date(service.endDate) < new Date(service.startDate)
+    );
+    if (servicesWithInvalidDates.length > 0) {
+      setMessage('A data final deve ser posterior à data inicial em todos os serviços.');
       setLoading(false);
       return;
     }
@@ -225,19 +251,16 @@ export default function AdminDashboard() {
     setMessage(`Processando ${totalImages} imagem(ns) de ${reportData.services.length} serviço(s)...`);
 
     try {
+      console.log('Iniciando criação do FormData...');
       const formData = new FormData();
-      formData.append('clientName', reportData.clientName);
-      formData.append('projectName', reportData.projectName);
-      formData.append('location', reportData.location);
-      formData.append('startDate', reportData.startDate);
-      formData.append('endDate', reportData.endDate);
-      formData.append('description', reportData.description);
-      formData.append('observations', reportData.observations);
       
       // Adicionar dados dos serviços
       formData.append('services', JSON.stringify(reportData.services.map(service => ({
         id: service.id,
-        name: service.name
+        name: service.name,
+        startDate: service.startDate,
+        endDate: service.endDate,
+        observations: service.observations
       }))));
       
       // Adicionar imagens de todos os serviços
@@ -253,45 +276,74 @@ export default function AdminDashboard() {
       // Adicionar imagem de resultado se existir
       if (reportData.resultImage) {
         formData.append('resultImage', reportData.resultImage);
+        console.log('Imagem de resultado adicionada');
+      }
+
+      console.log('FormData criado, enviando requisição...');
+
+      // Verificar se o token existe
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        setMessage('Token de autenticação não encontrado. Faça login novamente.');
+        setLoading(false);
+        return;
       }
 
       // Aumentar timeout para muitas imagens
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutos
 
+      console.log('Enviando requisição para:', '/api/admin/generate-report');
+      console.log('Token presente:', !!token);
+
       const response = await fetch('/api/admin/generate-report', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         },
         body: formData,
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
+      console.log('Resposta recebida:', response.status, response.statusText);
 
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `relatorio_obra_${reportData.projectName}_${reportData.startDate}.pdf`;
+        a.download = `relatorio_obra_${Date.now()}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         setMessage('Relatório gerado com sucesso!');
       } else {
-        const error = await response.json();
-        setMessage(error.message || 'Erro ao gerar relatório');
+        let errorMessage = 'Erro ao gerar relatório';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || error.details || errorMessage;
+          console.error('Erro detalhado da API:', error);
+        } catch (parseError) {
+          console.error('Erro ao parsear resposta de erro:', parseError);
+          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+        }
+        setMessage(errorMessage);
       }
     } catch (error: any) {
+      console.error('Erro capturado:', error);
+      
       if (error.name === 'AbortError') {
         setMessage('Timeout: O processamento demorou muito. Tente com menos imagens.');
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setMessage('Erro de conexão: Verifique se o servidor está rodando. Tente recarregar a página.');
       } else {
         setMessage(`Erro ao gerar relatório: ${error.message || 'Erro desconhecido'}`);
       }
       console.error('Erro detalhado:', error);
+      console.error('Tipo do erro:', error.name);
+      console.error('Stack:', error.stack);
     } finally {
       setLoading(false);
     }
@@ -341,103 +393,10 @@ export default function AdminDashboard() {
                 Criar Novo Relatório de Obra
               </CardTitle>
               <CardDescription>
-                Preencha os dados abaixo para gerar um relatório em PDF
+                Configure os serviços e adicione imagens para gerar um relatório em PDF
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Informações Básicas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Nome do Cliente</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="clientName"
-                      placeholder="Nome do cliente"
-                      value={reportData.clientName}
-                      onChange={(e) => setReportData(prev => ({ ...prev, clientName: e.target.value }))}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="projectName">Local da Obra</Label>
-                  <Input
-                    id="projectName"
-                    placeholder="Ex: Restaurante, Escritório, Residência"
-                    value={reportData.projectName}
-                    onChange={(e) => setReportData(prev => ({ ...prev, projectName: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="location">Localização</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="location"
-                      placeholder="Endereço da obra"
-                      value={reportData.location}
-                      onChange={(e) => setReportData(prev => ({ ...prev, location: e.target.value }))}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Data Inicial</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={reportData.startDate}
-                      onChange={(e) => setReportData(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">Data Final</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={reportData.endDate}
-                      onChange={(e) => setReportData(prev => ({ ...prev, endDate: e.target.value }))}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição Detalhada dos Trabalhos</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Descreva detalhadamente os trabalhos realizados, materiais utilizados, equipamentos de segurança, etc..."
-                  value={reportData.description}
-                  onChange={(e) => setReportData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={6}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observations">Observações</Label>
-                <Textarea
-                  id="observations"
-                  placeholder="Observações adicionais..."
-                  value={reportData.observations}
-                  onChange={(e) => setReportData(prev => ({ ...prev, observations: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-
               {/* Seção de Serviços */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -489,6 +448,46 @@ export default function AdminDashboard() {
                         placeholder="Ex: Limpeza das janelas e o ACM"
                         value={activeService.name}
                         onChange={(e) => updateServiceName(activeServiceId, e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`service-start-${activeServiceId}`}>Data Inicial do Serviço</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            id={`service-start-${activeServiceId}`}
+                            type="date"
+                            value={activeService.startDate}
+                            onChange={(e) => updateServiceStartDate(activeServiceId, e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`service-end-${activeServiceId}`}>Data Final do Serviço</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            id={`service-end-${activeServiceId}`}
+                            type="date"
+                            value={activeService.endDate}
+                            onChange={(e) => updateServiceEndDate(activeServiceId, e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`service-observations-${activeServiceId}`}>Observações (Opcional)</Label>
+                      <Textarea
+                        id={`service-observations-${activeServiceId}`}
+                        placeholder="Observações específicas sobre este serviço..."
+                        value={activeService.observations}
+                        onChange={(e) => updateServiceObservations(activeServiceId, e.target.value)}
+                        rows={3}
                       />
                     </div>
 
@@ -635,30 +634,63 @@ export default function AdminDashboard() {
                 </Alert>
               )}
 
-              {/* Resumo */}
-              <div className="text-xs text-gray-500 p-3 bg-gray-100 rounded">
-                <strong>Resumo:</strong><br/>
-                • Total de serviços: {reportData.services.length}<br/>
+              {/* Debug Box */}
+              <div className="text-xs text-gray-500 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <strong>Debug Info:</strong><br/>
+                • URL da API: /api/admin/generate-report<br/>
+                • Token presente: {!!localStorage.getItem('adminToken') ? '✅' : '❌'}<br/>
+                • Servidor rodando: {window.location.origin}<br/>
                 • Total de imagens: {getTotalImages()}<br/>
-                • Imagem de resultado: {reportData.resultImage ? '✅' : '❌ (opcional)'}<br/>
-                • Campos obrigatórios: {
-                  reportData.clientName && 
-                  reportData.projectName && 
-                  reportData.services.every(s => s.name.trim()) &&
-                  reportData.startDate &&
-                  reportData.endDate &&
-                  getTotalImages() > 0 ? '✅ Completo' : '❌ Incompleto'
-                }
+                • Tamanho estimado: {Math.round(getTotalImages() * 0.5)}MB (aprox.)<br/>
+                • Status: {message || 'Aguardando...'}
               </div>
 
-              <Button 
-                onClick={generatePDF}
-                disabled={loading}
-                className="w-full"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
-              </Button>
+              {/* Resumo */}
+               <div className="text-xs text-gray-500 p-3 bg-gray-100 rounded">
+                 <strong>Resumo:</strong><br/>
+                 • Total de serviços: {reportData.services.length}<br/>
+                 • Total de imagens: {getTotalImages()}<br/>
+                 • Imagem de resultado: {reportData.resultImage ? '✅' : '❌ (opcional)'}<br/>
+                 • Serviços com datas: {reportData.services.filter(s => s.startDate && s.endDate).length}/{reportData.services.length}<br/>
+                 • Campos obrigatórios: {
+                   reportData.services.every(s => s.name.trim() && s.startDate && s.endDate) &&
+                   getTotalImages() > 0 ? '✅ Completo' : '❌ Incompleto'
+                 }
+               </div>
+
+              <div className="space-y-2">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      setMessage('Testando conectividade...');
+                      const response = await fetch('/api/admin/generate-report', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                      });
+                      setMessage(`Teste: ${response.status} - ${response.statusText}`);
+                    } catch (error: any) {
+                      setMessage(`Erro no teste: ${error.message}`);
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  🧪 Testar Conectividade
+                </Button>
+                
+                <Button 
+                  onClick={generatePDF}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
