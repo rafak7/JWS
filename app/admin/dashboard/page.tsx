@@ -20,18 +20,35 @@ import {
   X
 } from 'lucide-react';
 
+interface ImageData {
+  file: File;
+  comment: string;
+}
+
 interface ServiceData {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
   observations: string;
-  images: File[];
+  images: ImageData[];
+}
+
+interface ReportConfig {
+  includeCompanyHeader: boolean;
+  includeServicesList: boolean;
+  includeServiceDates: boolean;
+  includeServiceObservations: boolean;
+  includeImageComments: boolean;
+  includeResultImage: boolean;
+  includePhotographicReport: boolean;
+  includeHeaderFooter: boolean;
 }
 
 interface ReportData {
   services: ServiceData[];
   resultImage: File | null;
+  config: ReportConfig;
 }
 
 export default function AdminDashboard() {
@@ -46,7 +63,17 @@ export default function AdminDashboard() {
       observations: '',
       images: [] 
     }],
-    resultImage: null
+    resultImage: null,
+    config: {
+      includeCompanyHeader: true,
+      includeServicesList: true,
+      includeServiceDates: true,
+      includeServiceObservations: true,
+      includeImageComments: true,
+      includeResultImage: true,
+      includePhotographicReport: true,
+      includeHeaderFooter: true
+    }
   });
   const [activeServiceId, setActiveServiceId] = useState('1');
   const [message, setMessage] = useState('');
@@ -145,11 +172,12 @@ export default function AdminDashboard() {
   // Funções para gerenciar imagens
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    const newImages = files.map(file => ({ file, comment: '' }));
     setReportData(prev => ({
       ...prev,
       services: prev.services.map(service => 
         service.id === activeServiceId 
-          ? { ...service, images: [...service.images, ...files] }
+          ? { ...service, images: [...service.images, ...newImages] }
           : service
       )
     }));
@@ -174,6 +202,34 @@ export default function AdminDashboard() {
           ? { ...service, images: [] }
           : service
       )
+    }));
+  };
+
+  const updateImageComment = (serviceId: string, imageIndex: number, comment: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { 
+              ...service, 
+              images: service.images.map((img, index) => 
+                index === imageIndex 
+                  ? { ...img, comment }
+                  : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const updateConfig = (key: keyof ReportConfig, value: boolean) => {
+    setReportData(prev => ({
+      ...prev,
+      config: {
+        ...prev.config,
+        [key]: value
+      }
     }));
   };
 
@@ -214,22 +270,26 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Verificar se todos os serviços têm datas
-    const servicesWithoutDates = reportData.services.filter(service => !service.startDate || !service.endDate);
-    if (servicesWithoutDates.length > 0) {
-      setMessage('Por favor, preencha as datas de todos os serviços.');
-      setLoading(false);
-      return;
+    // Verificar se todos os serviços têm datas (apenas se as datas estiverem habilitadas)
+    if (reportData.config.includeServiceDates) {
+      const servicesWithoutDates = reportData.services.filter(service => !service.startDate || !service.endDate);
+      if (servicesWithoutDates.length > 0) {
+        setMessage('Por favor, preencha as datas de todos os serviços.');
+        setLoading(false);
+        return;
+      }
     }
 
-    // Verificar se as datas finais são posteriores às iniciais em cada serviço
-    const servicesWithInvalidDates = reportData.services.filter(service => 
-      new Date(service.endDate) < new Date(service.startDate)
-    );
-    if (servicesWithInvalidDates.length > 0) {
-      setMessage('A data final deve ser posterior à data inicial em todos os serviços.');
-      setLoading(false);
-      return;
+    // Verificar se as datas finais são posteriores às iniciais em cada serviço (apenas se as datas estiverem habilitadas)
+    if (reportData.config.includeServiceDates) {
+      const servicesWithInvalidDates = reportData.services.filter(service => 
+        new Date(service.endDate) < new Date(service.startDate)
+      );
+      if (servicesWithInvalidDates.length > 0) {
+        setMessage('A data final deve ser posterior à data inicial em todos os serviços.');
+        setLoading(false);
+        return;
+      }
     }
 
     // Verificar se há imagens em pelo menos um serviço
@@ -263,12 +323,16 @@ export default function AdminDashboard() {
         observations: service.observations
       }))));
       
+      // Adicionar configurações do relatório
+      formData.append('config', JSON.stringify(reportData.config));
+      
       // Adicionar imagens de todos os serviços
       let imageIndex = 0;
       reportData.services.forEach((service) => {
-        service.images.forEach((image) => {
-          formData.append(`image_${imageIndex}`, image);
+        service.images.forEach((imageData) => {
+          formData.append(`image_${imageIndex}`, imageData.file);
           formData.append(`image_${imageIndex}_serviceId`, service.id);
+          formData.append(`image_${imageIndex}_comment`, imageData.comment);
           imageIndex++;
         });
       });
@@ -397,6 +461,113 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Seção de Configuração do Relatório */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Configuração do Relatório</Label>
+                  <span className="text-sm text-gray-500">
+                    {Object.values(reportData.config).filter(Boolean).length} de {Object.keys(reportData.config).length} elementos ativos
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeCompanyHeader"
+                      checked={reportData.config.includeCompanyHeader}
+                      onChange={(e) => updateConfig('includeCompanyHeader', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeCompanyHeader" className="text-sm">Cabeçalho da Empresa</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeServicesList"
+                      checked={reportData.config.includeServicesList}
+                      onChange={(e) => updateConfig('includeServicesList', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeServicesList" className="text-sm">Lista de Serviços</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeServiceDates"
+                      checked={reportData.config.includeServiceDates}
+                      onChange={(e) => updateConfig('includeServiceDates', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeServiceDates" className="text-sm">Datas dos Serviços</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeServiceObservations"
+                      checked={reportData.config.includeServiceObservations}
+                      onChange={(e) => updateConfig('includeServiceObservations', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeServiceObservations" className="text-sm">Observações dos Serviços</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeImageComments"
+                      checked={reportData.config.includeImageComments}
+                      onChange={(e) => updateConfig('includeImageComments', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeImageComments" className="text-sm">Comentários das Imagens</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeResultImage"
+                      checked={reportData.config.includeResultImage}
+                      onChange={(e) => updateConfig('includeResultImage', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeResultImage" className="text-sm">Imagem de Resultado</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includePhotographicReport"
+                      checked={reportData.config.includePhotographicReport}
+                      onChange={(e) => updateConfig('includePhotographicReport', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includePhotographicReport" className="text-sm">Texto &quot;Relatório Fotográfico&quot;</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeHeaderFooter"
+                      checked={reportData.config.includeHeaderFooter}
+                      onChange={(e) => updateConfig('includeHeaderFooter', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeHeaderFooter" className="text-sm">Header e Footer com Logo</Label>
+                  </div>
+                </div>
+                
+                {Object.values(reportData.config).filter(Boolean).length < 3 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-700">
+                      ⚠️ Atenção: Poucas opções estão ativas. Verifique se o relatório terá o conteúdo necessário.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Seção de Serviços */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -453,47 +624,65 @@ export default function AdminDashboard() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor={`service-start-${activeServiceId}`}>Data Inicial do Serviço</Label>
+                        <Label htmlFor={`service-start-${activeServiceId}`} className={!reportData.config.includeServiceDates ? 'text-gray-400' : ''}>
+                          Data Inicial do Serviço
+                          {!reportData.config.includeServiceDates && <span className="text-xs text-red-500 ml-2">(Desabilitado na configuração)</span>}
+                        </Label>
                         <div className="relative">
-                          <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Calendar className={`absolute left-3 top-3 h-4 w-4 ${!reportData.config.includeServiceDates ? 'text-gray-300' : 'text-gray-400'}`} />
                           <Input
                             id={`service-start-${activeServiceId}`}
                             type="date"
                             value={activeService.startDate}
                             onChange={(e) => updateServiceStartDate(activeServiceId, e.target.value)}
-                            className="pl-10"
+                            disabled={!reportData.config.includeServiceDates}
+                            className={`pl-10 ${!reportData.config.includeServiceDates ? 'bg-gray-100 text-gray-400' : ''}`}
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`service-end-${activeServiceId}`}>Data Final do Serviço</Label>
+                        <Label htmlFor={`service-end-${activeServiceId}`} className={!reportData.config.includeServiceDates ? 'text-gray-400' : ''}>
+                          Data Final do Serviço
+                          {!reportData.config.includeServiceDates && <span className="text-xs text-red-500 ml-2">(Desabilitado na configuração)</span>}
+                        </Label>
                         <div className="relative">
-                          <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Calendar className={`absolute left-3 top-3 h-4 w-4 ${!reportData.config.includeServiceDates ? 'text-gray-300' : 'text-gray-400'}`} />
                           <Input
                             id={`service-end-${activeServiceId}`}
                             type="date"
                             value={activeService.endDate}
                             onChange={(e) => updateServiceEndDate(activeServiceId, e.target.value)}
-                            className="pl-10"
+                            disabled={!reportData.config.includeServiceDates}
+                            className={`pl-10 ${!reportData.config.includeServiceDates ? 'bg-gray-100 text-gray-400' : ''}`}
                           />
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor={`service-observations-${activeServiceId}`}>Observações (Opcional)</Label>
+                      <Label htmlFor={`service-observations-${activeServiceId}`} className={!reportData.config.includeServiceObservations ? 'text-gray-400' : ''}>
+                        Observações (Opcional)
+                        {!reportData.config.includeServiceObservations && <span className="text-xs text-red-500 ml-2">(Desabilitado na configuração)</span>}
+                      </Label>
                       <Textarea
                         id={`service-observations-${activeServiceId}`}
-                        placeholder="Observações específicas sobre este serviço..."
+                        placeholder={reportData.config.includeServiceObservations ? "Observações específicas sobre este serviço..." : "Observações desabilitadas na configuração"}
                         value={activeService.observations}
                         onChange={(e) => updateServiceObservations(activeServiceId, e.target.value)}
+                        disabled={!reportData.config.includeServiceObservations}
                         rows={3}
+                        className={!reportData.config.includeServiceObservations ? 'bg-gray-100 text-gray-400' : ''}
                       />
                     </div>
 
                     {/* Upload de Imagens do Serviço */}
                     <div className="space-y-4">
-                      <Label>Imagens do Serviço (Máximo 20 por serviço)</Label>
+                      <Label>
+                        Imagens do Serviço (Máximo 20 por serviço)
+                        {!reportData.config.includeImageComments && (
+                          <span className="text-xs text-orange-500 ml-2">(Comentários desabilitados)</span>
+                        )}
+                      </Label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
                         <div className="text-center">
                           <Camera className="mx-auto h-12 w-12 text-gray-400" />
@@ -534,32 +723,41 @@ export default function AdminDashboard() {
                               Remover Todas
                             </Button>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
-                            {activeService.images.map((image, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={URL.createObjectURL(image)}
-                                  alt={`Imagem ${index + 1}`}
-                                  className={`w-full h-20 object-cover rounded-lg ${
-                                    index >= 20 ? 'opacity-50' : ''
-                                  }`}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                            {activeService.images.map((imageData, index) => (
+                              <div key={index} className="space-y-2">
+                                <div className="relative">
+                                  <img
+                                    src={URL.createObjectURL(imageData.file)}
+                                    alt={`Imagem ${index + 1}`}
+                                    className={`w-full h-24 object-cover rounded-lg ${
+                                      index >= 20 ? 'opacity-50' : ''
+                                    }`}
+                                  />
+                                  {index >= 20 && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                      <span className="text-white text-xs">Não incluída</span>
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-1 right-1 h-5 w-5 p-0"
+                                    onClick={() => removeImage(activeServiceId, index)}
+                                  >
+                                    <Trash2 className="h-2 w-2" />
+                                  </Button>
+                                  <span className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <Input
+                                  placeholder={reportData.config.includeImageComments ? "Comentário da imagem (opcional)" : "Comentários desabilitados na configuração"}
+                                  value={imageData.comment}
+                                  onChange={(e) => updateImageComment(activeServiceId, index, e.target.value)}
+                                  disabled={!reportData.config.includeImageComments}
+                                  className={`text-xs ${!reportData.config.includeImageComments ? 'bg-gray-100 text-gray-400' : ''}`}
                                 />
-                                {index >= 20 && (
-                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                    <span className="text-white text-xs">Não incluída</span>
-                                  </div>
-                                )}
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 h-5 w-5 p-0"
-                                  onClick={() => removeImage(activeServiceId, index)}
-                                >
-                                  <Trash2 className="h-2 w-2" />
-                                </Button>
-                                <span className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
-                                  {index + 1}
-                                </span>
                               </div>
                             ))}
                           </div>
@@ -571,6 +769,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Seção da Imagem de Resultado */}
+              {reportData.config.includeResultImage && (
               <div className="space-y-4">
                 <Label>Imagem de Resultado (Opcional)</Label>
                 <div className="border-2 border-dashed border-green-300 rounded-lg p-6 bg-green-50">
@@ -625,6 +824,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+              )}
 
               {message && (
                 <Alert className={message.includes('Erro') || message.includes('Máximo') ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50'}>
@@ -634,63 +834,14 @@ export default function AdminDashboard() {
                 </Alert>
               )}
 
-              {/* Debug Box */}
-              <div className="text-xs text-gray-500 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <strong>Debug Info:</strong><br/>
-                • URL da API: /api/admin/generate-report<br/>
-                • Token presente: {!!localStorage.getItem('adminToken') ? '✅' : '❌'}<br/>
-                • Servidor rodando: {window.location.origin}<br/>
-                • Total de imagens: {getTotalImages()}<br/>
-                • Tamanho estimado: {Math.round(getTotalImages() * 0.5)}MB (aprox.)<br/>
-                • Status: {message || 'Aguardando...'}
-              </div>
-
-              {/* Resumo */}
-               <div className="text-xs text-gray-500 p-3 bg-gray-100 rounded">
-                 <strong>Resumo:</strong><br/>
-                 • Total de serviços: {reportData.services.length}<br/>
-                 • Total de imagens: {getTotalImages()}<br/>
-                 • Imagem de resultado: {reportData.resultImage ? '✅' : '❌ (opcional)'}<br/>
-                 • Serviços com datas: {reportData.services.filter(s => s.startDate && s.endDate).length}/{reportData.services.length}<br/>
-                 • Campos obrigatórios: {
-                   reportData.services.every(s => s.name.trim() && s.startDate && s.endDate) &&
-                   getTotalImages() > 0 ? '✅ Completo' : '❌ Incompleto'
-                 }
-               </div>
-
-              <div className="space-y-2">
-                <Button 
-                  onClick={async () => {
-                    try {
-                      setMessage('Testando conectividade...');
-                      const response = await fetch('/api/admin/generate-report', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({})
-                      });
-                      setMessage(`Teste: ${response.status} - ${response.statusText}`);
-                    } catch (error: any) {
-                      setMessage(`Erro no teste: ${error.message}`);
-                    }
-                  }}
-                  variant="outline"
-                  className="w-full"
-                >
-                  🧪 Testar Conectividade
-                </Button>
-                
-                <Button 
-                  onClick={generatePDF}
-                  disabled={loading}
-                  className="w-full"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
-                </Button>
-              </div>
+              <Button 
+                onClick={generatePDF}
+                disabled={loading}
+                className="w-full"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
+              </Button>
             </CardContent>
           </Card>
         </div>

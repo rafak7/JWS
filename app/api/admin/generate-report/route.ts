@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';
 import { jsPDF } from 'jspdf';
+import fs from 'fs';
+import path from 'path';
 
 // Configuração de runtime para esta API route
 export const runtime = 'nodejs';
@@ -21,6 +23,20 @@ function verifyToken(request: NextRequest) {
   } catch (error) {
     return null;
   }
+}
+
+// Função para carregar logo da empresa
+function loadCompanyLogo(): string | null {
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'images', 'jws-logo.jpeg');
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      return `data:image/jpeg;base64,${logoBuffer.toString('base64')}`;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar logo:', error);
+  }
+  return null;
 }
 
 // Função para converter imagem para base64 com compressão
@@ -77,21 +93,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Processar configurações do relatório
+    let config = {
+      includeCompanyHeader: true,
+      includeServicesList: true,
+      includeServiceDates: true,
+      includeServiceObservations: true,
+      includeImageComments: true,
+      includeResultImage: true,
+      includePhotographicReport: true,
+      includeHeaderFooter: true
+    };
+    try {
+      const configData = formData.get('config');
+      if (configData) {
+        config = { ...config, ...JSON.parse(configData as string) };
+      }
+      console.log('Configurações processadas:', config);
+    } catch (error) {
+      console.error('Erro ao processar configurações:', error);
+      // Continuar com configurações padrão
+    }
+
     // Processar imagens com informações do serviço
     console.log('Processando imagens...');
     const images: any[] = [];
     const formDataEntries = Array.from(formData.entries());
     
     for (const [key, value] of formDataEntries) {
-      if (key.startsWith('image_') && !key.includes('_serviceId') && value && typeof value === 'object' && 'arrayBuffer' in value) {
+      if (key.startsWith('image_') && !key.includes('_serviceId') && !key.includes('_comment') && value && typeof value === 'object' && 'arrayBuffer' in value) {
         const imageIndex = key.replace('image_', '');
         const serviceId = formData.get(`image_${imageIndex}_serviceId`) as string;
+        const comment = formData.get(`image_${imageIndex}_comment`) as string || '';
         const service = servicesData.find((s: any) => s.id === serviceId);
         
         images.push({
           file: value,
           serviceId: serviceId,
-          serviceName: service?.name || 'Serviço'
+          serviceName: service?.name || 'Serviço',
+          comment: comment
         });
       }
     }
@@ -101,12 +141,201 @@ export async function POST(request: NextRequest) {
     // Processar imagem de resultado separada
     const resultImage = formData.get('resultImage');
 
+    // Carregar logo da empresa
+    const companyLogo = loadCompanyLogo();
+
     // Criar PDF
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 20;
-    let yPosition = margin;
+    const fullHeaderHeight = 40;
+    const simpleHeaderHeight = 25;
+    const footerHeight = 20;
+    let yPosition = margin + fullHeaderHeight;
+
+    // Função para adicionar header completo (primeira página)
+    const addFullHeader = () => {
+      // Salvar estado atual
+      const currentFontSize = pdf.getFontSize();
+      const currentFont = pdf.getFont();
+      
+      // Background do header com gradiente visual
+      pdf.setFillColor(248, 249, 250);
+      pdf.rect(margin, margin - 5, pageWidth - 2 * margin, fullHeaderHeight, 'F');
+      
+      // Borda superior colorida (identidade visual)
+      pdf.setFillColor(255, 193, 7); // Amarelo JWS
+      pdf.rect(margin, margin - 5, pageWidth - 2 * margin, 3, 'F');
+      
+      if (companyLogo) {
+        // Logo centralizado verticalmente no header
+        pdf.addImage(companyLogo, 'JPEG', margin + 8, margin + 3, 28, 22);
+      }
+      
+      // Seção principal da empresa
+      const mainSectionX = margin + 45;
+      
+      // Nome da empresa
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(33, 37, 41);
+      pdf.text('JWS EMPREITEIRA', mainSectionX, margin + 10);
+      
+      // Subtítulo com estilo
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(108, 117, 125);
+      pdf.text('Serviços de Manutenção Predial por empreiteira', mainSectionX, margin + 18);
+      
+      // Seção de contato organizada em duas linhas
+      const contactY1 = margin + 25;
+      const contactY2 = margin + 30;
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(73, 80, 87);
+      
+      // Primeira linha: Telefone e Email
+      const phoneX = mainSectionX;
+      const emailX = mainSectionX + 65;
+      
+      // Telefone
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Tel:', phoneX, contactY1);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('(21) 98450-6031', phoneX + 12, contactY1);
+      
+      // Email (verificar se cabe na página)
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Email:', emailX, contactY1);
+      pdf.setFont('helvetica', 'normal');
+      const emailText = 'jws.manutencao@gmail.com';
+      const emailWidth = pdf.getTextWidth(emailText);
+      const availableWidth = pageWidth - margin - emailX - 16 - 10; // margem de segurança
+      
+      if (emailWidth <= availableWidth) {
+        pdf.text(emailText, emailX + 16, contactY1);
+      } else {
+        // Se não couber, colocar na segunda linha
+        pdf.text(emailText, phoneX + 80, contactY2);
+      }
+      
+      // Segunda linha: CNPJ
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('CNPJ:', phoneX, contactY2);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('42.316.144/0001-70', phoneX + 16, contactY2);
+      
+      // Linha separadora elegante
+      pdf.setDrawColor(222, 226, 230);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin + 5, margin + fullHeaderHeight - 5, pageWidth - margin - 5, margin + fullHeaderHeight - 5);
+      
+      // Restaurar estado anterior
+      pdf.setFontSize(currentFontSize);
+      pdf.setFont(currentFont.fontName, currentFont.fontStyle);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setLineWidth(0.2);
+    };
+
+    // Função para adicionar header simples (demais páginas)
+    const addSimpleHeader = () => {
+      // Salvar estado atual
+      const currentFontSize = pdf.getFontSize();
+      const currentFont = pdf.getFont();
+      
+      // Background sutil
+      pdf.setFillColor(252, 253, 254);
+      pdf.rect(margin, margin - 2, pageWidth - 2 * margin, simpleHeaderHeight, 'F');
+      
+      // Borda superior colorida (mais fina)
+      pdf.setFillColor(255, 193, 7); // Amarelo JWS
+      pdf.rect(margin, margin - 2, pageWidth - 2 * margin, 2, 'F');
+      
+      if (companyLogo) {
+        // Logo menor e bem posicionado
+        pdf.addImage(companyLogo, 'JPEG', margin + 5, margin + 2, 18, 14);
+      }
+      
+      // Nome da empresa com estilo consistente
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(33, 37, 41);
+      pdf.text('JWS EMPREITEIRA', margin + 28, margin + 11);
+      
+      // Subtítulo menor
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(108, 117, 125);
+      pdf.text('Relatório de Obra', margin + 28, margin + 17);
+      
+      // Linha separadora elegante
+      pdf.setDrawColor(222, 226, 230);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin + 3, margin + simpleHeaderHeight - 2, pageWidth - margin - 3, margin + simpleHeaderHeight - 2);
+      
+      // Restaurar estado anterior
+      pdf.setFontSize(currentFontSize);
+      pdf.setFont(currentFont.fontName, currentFont.fontStyle);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setLineWidth(0.2);
+    };
+
+    // Função para adicionar header (escolhe entre completo ou simples)
+    const addHeader = (isFirstPage = false) => {
+      if (isFirstPage) {
+        addFullHeader();
+      } else {
+        addSimpleHeader();
+      }
+    };
+
+    // Função para obter altura do header baseada no contexto
+    const getHeaderHeight = (isFirstPage = false) => {
+      return isFirstPage ? fullHeaderHeight : simpleHeaderHeight;
+    };
+
+    // Função para adicionar footer
+    const addFooter = () => {
+      const footerY = pageHeight - footerHeight;
+      
+      // Background sutil do footer
+      pdf.setFillColor(252, 253, 254);
+      pdf.rect(margin, footerY - 2, pageWidth - 2 * margin, footerHeight + 2, 'F');
+      
+      // Linha separadora elegante
+      pdf.setDrawColor(222, 226, 230);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin + 3, footerY, pageWidth - margin - 3, footerY);
+      
+      // Adicionar texto do footer
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(108, 117, 125);
+      
+      // Número da página (direita)
+      const pageNumber = pdf.getCurrentPageInfo().pageNumber;
+      const pageText = `Página ${pageNumber}`;
+      const pageTextWidth = pdf.getTextWidth(pageText);
+      pdf.text(pageText, pageWidth - margin - pageTextWidth - 5, footerY + 8);
+      
+      // Nome da empresa (centro)
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(73, 80, 87);
+      const companyText = 'JWS EMPREITEIRA';
+      const companyTextWidth = pdf.getTextWidth(companyText);
+      pdf.text(companyText, (pageWidth - companyTextWidth) / 2, footerY + 8);
+      
+      // Data de geração (esquerda)
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(108, 117, 125);
+      const currentDate = new Date().toLocaleDateString('pt-BR');
+      pdf.text(`Gerado em: ${currentDate}`, margin + 5, footerY + 8);
+      
+      // Resetar estado
+      pdf.setTextColor(0, 0, 0);
+      pdf.setLineWidth(0.2);
+    };
 
     // Função para centralizar texto
     const addCenteredText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
@@ -123,9 +352,15 @@ export async function POST(request: NextRequest) {
       yPosition += fontSize * 0.5 + 5;
       
       // Verificar se precisa de nova página
-      if (yPosition > pageHeight - margin) {
+      const bottomLimit = config.includeHeaderFooter ? pageHeight - margin - footerHeight : pageHeight - margin;
+      if (yPosition > bottomLimit) {
         pdf.addPage();
-        yPosition = margin;
+        if (config.includeHeaderFooter) {
+          addHeader();
+          yPosition = margin + simpleHeaderHeight;
+        } else {
+          yPosition = margin;
+        }
       }
     };
 
@@ -143,32 +378,20 @@ export async function POST(request: NextRequest) {
       yPosition += lines.length * (fontSize * 0.4) + 5;
       
       // Verificar se precisa de nova página
-      if (yPosition > pageHeight - margin) {
+      const bottomLimit = config.includeHeaderFooter ? pageHeight - margin - footerHeight : pageHeight - margin;
+      if (yPosition > bottomLimit) {
         pdf.addPage();
-        yPosition = margin;
+        if (config.includeHeaderFooter) {
+          addHeader();
+          yPosition = margin + simpleHeaderHeight;
+        } else {
+          yPosition = margin;
+        }
       }
     };
 
-    // Página inicial com resumo geral
-    addCenteredText('JWS EMPREITEIRA', 16, true);
-    yPosition += 10;
-
-    addCenteredText('Diário de Obra', 14, true);
-    yPosition += 10;
-
-    // Lista de serviços na página inicial
-    addText('Serviços Executados:', 12, true);
-    yPosition += 5;
-
-    servicesData.forEach((service: any, index: number) => {
-      const serviceStartDate = new Date(service.startDate + 'T12:00:00');
-      const serviceEndDate = new Date(service.endDate + 'T12:00:00');
-      addText(`${index + 1}. ${service.name} (${serviceStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${serviceEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})`, 11);
-    });
-
-    yPosition += 10;
-    addText('Relatório fotográfico referente à execução dos serviços.', 12);
-    yPosition += 15;
+    // Não criar página inicial - começar diretamente com os serviços
+    let needsInitialPage = false;
 
     // Organizar imagens por serviço e processar cada serviço separadamente
     if (images.length > 0) {
@@ -185,37 +408,53 @@ export async function POST(request: NextRequest) {
       console.log(`Processando ${imagesByService.size} serviços com imagens`);
       
       // Processar cada serviço separadamente
+      let isFirstService = true;
       for (const service of servicesData) {
         const serviceImages = imagesByService.get(service.id) || [];
         
         if (serviceImages.length > 0) {
           console.log(`Processando serviço: ${service.name} com ${serviceImages.length} imagens`);
           
-          // Nova página para o cabeçalho do serviço
-          pdf.addPage();
-          yPosition = margin + 50;
+          // Nova página para o cabeçalho do serviço (exceto se for o primeiro serviço e não precisamos de página inicial)
+          if (needsInitialPage || !isFirstService) {
+            pdf.addPage();
+          }
+          
+          if (config.includeHeaderFooter) {
+            addHeader(isFirstService);
+            yPosition = margin + (isFirstService ? fullHeaderHeight : simpleHeaderHeight) + 30;
+          } else {
+            yPosition = margin + 30;
+          }
+          
+          isFirstService = false;
           
           // Cabeçalho do serviço
-          addCenteredText('JWS EMPREITEIRA', 16, true);
-          yPosition += 10;
-          
-          addCenteredText('Diário de Obra', 14, true);
-          yPosition += 10;
+          if (config.includeCompanyHeader) {
+            addCenteredText('JWS EMPREITEIRA', 16, true);
+            yPosition += 10;
+            
+            addCenteredText('Diário de Obra', 14, true);
+            yPosition += 10;
+          }
           
           // Informações específicas do serviço
-          const serviceStartDate = new Date(service.startDate + 'T12:00:00');
-          const serviceEndDate = new Date(service.endDate + 'T12:00:00');
-          
           addCenteredText(`${service.name}`, 14, true);
           yPosition += 5;
           
-          addCenteredText(`Período: ${serviceStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${serviceEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`, 12);
-          yPosition += 15;
+          if (config.includeServiceDates) {
+            const serviceStartDate = new Date(service.startDate + 'T12:00:00');
+            const serviceEndDate = new Date(service.endDate + 'T12:00:00');
+            addCenteredText(`Período: ${serviceStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${serviceEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`, 12);
+            yPosition += 15;
+          }
           
-          addText(`Relatório fotográfico referente à execução do serviço.`, 12);
+          if (config.includePhotographicReport) {
+            addText(`Relatório fotográfico referente à execução do serviço.`, 12);
+          }
           
           // Adicionar observações se existirem
-          if (service.observations && service.observations.trim()) {
+          if (config.includeServiceObservations && service.observations && service.observations.trim()) {
             yPosition += 10;
             addText('Observações:', 12, true);
             addText(service.observations, 11);
@@ -240,13 +479,24 @@ export async function POST(request: NextRequest) {
               
               // Nova página para cada imagem
               pdf.addPage();
+              if (config.includeHeaderFooter) {
+                addHeader();
+              }
               
               // Centralizar verticalmente na página
               const imgWidth = 150;
               const imgHeight = 120;
               const titleHeight = 20;
               const totalContentHeight = titleHeight + imgHeight;
-              const startY = (pageHeight - totalContentHeight) / 2;
+              
+              let availableHeight, startY;
+              if (config.includeHeaderFooter) {
+                availableHeight = pageHeight - simpleHeaderHeight - footerHeight - (2 * margin);
+                startY = margin + simpleHeaderHeight + (availableHeight - totalContentHeight) / 2;
+              } else {
+                availableHeight = pageHeight - (2 * margin);
+                startY = margin + (availableHeight - totalContentHeight) / 2;
+              }
               
               // Resetar posição Y para centralizar
               yPosition = startY;
@@ -259,13 +509,24 @@ export async function POST(request: NextRequest) {
               const imgX = (pageWidth - imgWidth) / 2;
               
               pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+              yPosition += imgHeight + 10;
+              
+              // Adicionar comentário da imagem se existir
+              if (config.includeImageComments && imageData.comment && imageData.comment.trim()) {
+                addCenteredText(imageData.comment, 10);
+              }
               
               imageCounter++;
             } catch (error) {
               console.error(`Erro ao processar imagem ${i + 1} do serviço ${service.name}:`, error);
               // Continuar com as próximas imagens mesmo se uma falhar
               pdf.addPage();
-              yPosition = margin;
+              if (config.includeHeaderFooter) {
+                addHeader();
+                yPosition = margin + simpleHeaderHeight;
+              } else {
+                yPosition = margin;
+              }
               addText(`Erro ao carregar imagem ${imageCounter}`, 10);
               imageCounter++;
             }
@@ -275,20 +536,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Seção de resultado com imagem separada
-    if (resultImage && typeof resultImage === 'object' && 'arrayBuffer' in resultImage) {
+    if (config.includeResultImage && resultImage && typeof resultImage === 'object' && 'arrayBuffer' in resultImage) {
       try {
         console.log('Processando imagem de resultado');
         const base64 = await imageToBase64(resultImage);
         
-        // Nova página para o resultado
+        // Nova página para o resultado (sempre criar nova página para resultado)
         pdf.addPage();
+        if (config.includeHeaderFooter) {
+          addHeader();
+        }
         
         // Centralizar verticalmente na página
         const imgWidth = 150;
         const imgHeight = 120;
         const titleHeight = 20;
         const totalContentHeight = titleHeight + imgHeight;
-        const startY = (pageHeight - totalContentHeight) / 2;
+        
+        let availableHeight, startY;
+        if (config.includeHeaderFooter) {
+          availableHeight = pageHeight - simpleHeaderHeight - footerHeight - (2 * margin);
+          startY = margin + simpleHeaderHeight + (availableHeight - totalContentHeight) / 2;
+        } else {
+          availableHeight = pageHeight - (2 * margin);
+          startY = margin + (availableHeight - totalContentHeight) / 2;
+        }
         
         // Resetar posição Y para centralizar
         yPosition = startY;
@@ -302,6 +574,15 @@ export async function POST(request: NextRequest) {
         pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
       } catch (error) {
         console.error('Erro ao processar imagem de resultado:', error);
+      }
+    }
+
+    // Adicionar footers em todas as páginas se habilitado
+    if (config.includeHeaderFooter) {
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        addFooter();
       }
     }
 
