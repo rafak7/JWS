@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
       includeImageComments: true,
       includeResultImage: true,
       includePhotographicReport: true,
-      includeHeaderFooter: true
+      includeHeaderFooter: true,
+      includeFinalConsiderations: true
     };
     try {
       const configData = formData.get('config');
@@ -140,6 +141,9 @@ export async function POST(request: NextRequest) {
 
     // Processar imagem de resultado separada
     const resultImage = formData.get('resultImage');
+
+    // Processar considerações finais
+    const finalConsiderations = formData.get('finalConsiderations') as string || '';
 
     // Carregar logo da empresa
     const companyLogo = loadCompanyLogo();
@@ -574,6 +578,32 @@ export async function POST(request: NextRequest) {
         pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
       } catch (error) {
         console.error('Erro ao processar imagem de resultado:', error);
+      }
+    }
+
+    // Seção de considerações finais
+    if (config.includeFinalConsiderations && finalConsiderations && finalConsiderations.trim()) {
+      try {
+        console.log('Adicionando considerações finais');
+        
+        // Nova página para as considerações finais
+        pdf.addPage();
+        if (config.includeHeaderFooter) {
+          addHeader();
+          yPosition = margin + simpleHeaderHeight + 20;
+        } else {
+          yPosition = margin + 20;
+        }
+        
+        // Título da seção
+        addCenteredText('Considerações Finais', 16, true);
+        yPosition += 15;
+        
+        // Texto das considerações finais
+        addText(finalConsiderations, 12);
+        
+      } catch (error) {
+        console.error('Erro ao processar considerações finais:', error);
       }
     }
 

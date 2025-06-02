@@ -43,12 +43,14 @@ interface ReportConfig {
   includeResultImage: boolean;
   includePhotographicReport: boolean;
   includeHeaderFooter: boolean;
+  includeFinalConsiderations: boolean;
 }
 
 interface ReportData {
   services: ServiceData[];
   resultImage: File | null;
   config: ReportConfig;
+  finalConsiderations: string;
 }
 
 export default function AdminDashboard() {
@@ -72,8 +74,10 @@ export default function AdminDashboard() {
       includeImageComments: true,
       includeResultImage: true,
       includePhotographicReport: true,
-      includeHeaderFooter: true
-    }
+      includeHeaderFooter: true,
+      includeFinalConsiderations: true
+    },
+    finalConsiderations: ''
   });
   const [activeServiceId, setActiveServiceId] = useState('1');
   const [message, setMessage] = useState('');
@@ -233,6 +237,13 @@ export default function AdminDashboard() {
     }));
   };
 
+  const updateFinalConsiderations = (text: string) => {
+    setReportData(prev => ({
+      ...prev,
+      finalConsiderations: text
+    }));
+  };
+
   // Funções para imagem de resultado
   const handleResultImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -325,6 +336,9 @@ export default function AdminDashboard() {
       
       // Adicionar configurações do relatório
       formData.append('config', JSON.stringify(reportData.config));
+      
+      // Adicionar considerações finais
+      formData.append('finalConsiderations', reportData.finalConsiderations);
       
       // Adicionar imagens de todos os serviços
       let imageIndex = 0;
@@ -557,6 +571,17 @@ export default function AdminDashboard() {
                     />
                     <Label htmlFor="includeHeaderFooter" className="text-sm">Header e Footer com Logo</Label>
                   </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeFinalConsiderations"
+                      checked={reportData.config.includeFinalConsiderations}
+                      onChange={(e) => updateConfig('includeFinalConsiderations', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeFinalConsiderations" className="text-sm">Considerações Finais</Label>
+                  </div>
                 </div>
                 
                 {Object.values(reportData.config).filter(Boolean).length < 3 && (
@@ -767,6 +792,26 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* Seção de Considerações Finais */}
+              {reportData.config.includeFinalConsiderations && (
+              <div className="space-y-4">
+                <Label htmlFor="finalConsiderations" className="text-lg font-semibold">
+                  Considerações Finais
+                </Label>
+                <Textarea
+                  id="finalConsiderations"
+                  placeholder="Digite as considerações finais do relatório..."
+                  value={reportData.finalConsiderations}
+                  onChange={(e) => updateFinalConsiderations(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-gray-500">
+                  Este texto aparecerá na seção final do relatório PDF
+                </p>
+              </div>
+              )}
 
               {/* Seção da Imagem de Resultado */}
               {reportData.config.includeResultImage && (
