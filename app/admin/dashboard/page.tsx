@@ -17,7 +17,12 @@ import {
   Camera,
   Plus,
   Trash2,
-  X
+  X,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Edit3,
+  Save
 } from 'lucide-react';
 
 interface ImageData {
@@ -53,6 +58,16 @@ interface ReportData {
   finalConsiderations: string;
 }
 
+interface CronogramaItem {
+  id: string;
+  dataInicio: string;
+  dataFim: string;
+  atividade: string;
+  status: 'pendente' | 'em_andamento' | 'concluido';
+  observacoes: string;
+  ordem: number;
+}
+
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -81,7 +96,34 @@ export default function AdminDashboard() {
   });
   const [activeServiceId, setActiveServiceId] = useState('1');
   const [message, setMessage] = useState('');
+  const [cronograma, setCronograma] = useState<CronogramaItem[]>([]);
+  const [editingCronograma, setEditingCronograma] = useState<string | null>(null);
   const router = useRouter();
+
+  // Função para carregar cronogramas do backend
+  const loadCronogramas = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) return;
+
+      const response = await fetch('/api/admin/cronograma', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Se houver cronogramas salvos, carregar o mais recente
+        if (data.cronogramas && data.cronogramas.length > 0) {
+          const latestCronograma = data.cronogramas[data.cronogramas.length - 1];
+          setCronograma(latestCronograma.cronograma || []);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar cronogramas:', error);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -89,6 +131,8 @@ export default function AdminDashboard() {
       router.push('/admin/login');
     } else {
       setIsAuthenticated(true);
+      // Carregar cronogramas salvos
+      loadCronogramas();
     }
     setLoading(false);
   }, [router]);
@@ -258,6 +302,218 @@ export default function AdminDashboard() {
       ...prev,
       resultImage: null
     }));
+  };
+
+  // Funções para gerenciar cronograma
+  const addCronogramaItem = () => {
+    const newItem: CronogramaItem = {
+      id: Date.now().toString(),
+      dataInicio: new Date().toISOString().split('T')[0],
+      dataFim: new Date().toISOString().split('T')[0],
+      atividade: '',
+      status: 'pendente',
+      observacoes: '',
+      ordem: cronograma.length + 1
+    };
+    setCronograma(prev => [...prev, newItem]);
+  };
+
+  const removeCronogramaItem = (id: string) => {
+    setCronograma(prev => prev.filter(item => item.id !== id));
+  };
+
+  const updateCronogramaItem = (id: string, field: keyof CronogramaItem, value: string | number) => {
+    setCronograma(prev => prev.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const reorderCronograma = (dragIndex: number, hoverIndex: number) => {
+    setCronograma(prev => {
+      const newItems = [...prev];
+      const draggedItem = newItems[dragIndex];
+      newItems.splice(dragIndex, 1);
+      newItems.splice(hoverIndex, 0, draggedItem);
+      return newItems.map((item, index) => ({ ...item, ordem: index + 1 }));
+    });
+  };
+
+  const getStatusColor = (status: CronogramaItem['status']) => {
+    switch (status) {
+      case 'pendente':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'em_andamento':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'concluido':
+        return 'text-green-600 bg-green-50 border-green-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: CronogramaItem['status']) => {
+    switch (status) {
+      case 'pendente':
+        return <Clock className="w-4 h-4" />;
+      case 'em_andamento':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'concluido':
+        return <CheckCircle className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const saveCronograma = async () => {
+    try {
+      setMessage('Salvando cronograma...');
+      // Aqui você pode adicionar a lógica para salvar no backend
+      const response = await fetch('/api/admin/cronograma', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ cronograma })
+      });
+
+      if (response.ok) {
+        setMessage('Cronograma salvo com sucesso!');
+      } else {
+        setMessage('Erro ao salvar cronograma');
+      }
+    } catch (error) {
+      setMessage('Erro ao salvar cronograma');
+    }
+  };
+
+  const gerarCronogramaPDF = async () => {
+    if (cronograma.length === 0) {
+      setMessage('Adicione pelo menos uma atividade ao cronograma antes de gerar o PDF.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage('Gerando PDF do cronograma...');
+
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        setMessage('Token de autenticação não encontrado. Faça login novamente.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/admin/generate-cronograma', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          cronograma,
+          titulo: 'Cronograma de Obra - Projeto Principal'
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cronograma_obra_${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setMessage('Cronograma PDF gerado com sucesso!');
+      } else {
+        let errorMessage = 'Erro ao gerar cronograma PDF';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch (parseError) {
+          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+        }
+        setMessage(errorMessage);
+      }
+    } catch (error: any) {
+      console.error('Erro ao gerar cronograma PDF:', error);
+      setMessage(`Erro ao gerar cronograma PDF: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const preencherExemplo = () => {
+    const exemploCronograma: CronogramaItem[] = [
+      {
+        id: '1',
+        dataInicio: '2024-06-23',
+        dataFim: '2024-06-25',
+        atividade: 'Identificar locais de isolamentos',
+        status: 'pendente',
+        observacoes: '',
+        ordem: 1
+      },
+      {
+        id: '2',
+        dataInicio: '2024-06-26',
+        dataFim: '2024-06-30',
+        atividade: 'Identificar e reparar trincas e buracos existentes no muro lateral',
+        status: 'pendente',
+        observacoes: '',
+        ordem: 2
+      },
+      {
+        id: '3',
+        dataInicio: '2024-07-01',
+        dataFim: '2024-07-07',
+        atividade: 'Alinhamento e reforço estrutural aonde for necessário no muro lateral',
+        status: 'pendente',
+        observacoes: '',
+        ordem: 3
+      },
+      {
+        id: '4',
+        dataInicio: '2024-07-08',
+        dataFim: '2024-07-10',
+        atividade: 'Demolição do muro dos fundos',
+        status: 'pendente',
+        observacoes: 'Aguardando entrega das placas e pilares',
+        ordem: 4
+      },
+      {
+        id: '5',
+        dataInicio: '2024-07-11',
+        dataFim: '2024-07-12',
+        atividade: 'Bota fora',
+        status: 'pendente',
+        observacoes: '',
+        ordem: 5
+      },
+      {
+        id: '6',
+        dataInicio: '2024-07-13',
+        dataFim: '2024-07-14',
+        atividade: 'Limpeza da área demolida',
+        status: 'pendente',
+        observacoes: '',
+        ordem: 6
+      },
+      {
+        id: '7',
+        dataInicio: '2024-07-15',
+        dataFim: '2024-07-25',
+        atividade: 'Construção do muro lateral do posto',
+        status: 'pendente',
+        observacoes: 'Em sequência à demolição',
+        ordem: 7
+      }
+    ];
+    
+    setCronograma(exemploCronograma);
+    setMessage('Cronograma preenchido com exemplo baseado no seu projeto!');
   };
 
   // Funções auxiliares
@@ -468,13 +724,26 @@ export default function AdminDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <FileText className="w-5 h-5 mr-2" />
-                Criar Novo Relatório de Obra
+                JWS Admin Dashboard
               </CardTitle>
               <CardDescription>
-                Configure os serviços e adicione imagens para gerar um relatório em PDF
+                Gerencie relatórios de obra e cronogramas de projeto
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
+              <Tabs defaultValue="relatorio" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="relatorio" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Relatório de Obra
+                  </TabsTrigger>
+                  <TabsTrigger value="cronograma" className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Cronograma de Obra
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="relatorio" className="space-y-6 mt-6">
               {/* Seção de Configuração do Relatório */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -887,6 +1156,199 @@ export default function AdminDashboard() {
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
               </Button>
+                </TabsContent>
+
+                <TabsContent value="cronograma" className="space-y-6 mt-6">
+                  {/* Cabeçalho do Cronograma */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold flex items-center">
+                        <Calendar className="w-5 h-5 mr-2" />
+                        Cronograma de Obra
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Gerencie as etapas e prazos do projeto
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={addCronogramaItem} size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Atividade
+                      </Button>
+                      <Button onClick={preencherExemplo} size="sm" variant="secondary">
+                        <Clock className="w-4 h-4 mr-2" />
+                        Carregar Exemplo
+                      </Button>
+                      <Button onClick={saveCronograma} variant="outline" size="sm">
+                        <Save className="w-4 h-4 mr-2" />
+                        Salvar Cronograma
+                      </Button>
+                      <Button 
+                        onClick={gerarCronogramaPDF} 
+                        variant="default" 
+                        size="sm"
+                        disabled={loading || cronograma.length === 0}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        {loading ? 'Gerando PDF...' : 'Baixar PDF'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Lista de Atividades do Cronograma */}
+                  {cronograma.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                      <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-4 text-gray-500">Nenhuma atividade no cronograma</p>
+                      <p className="text-sm text-gray-400">Clique em &quot;Adicionar Atividade&quot; para começar</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {cronograma
+                        .sort((a, b) => a.ordem - b.ordem)
+                        .map((item, index) => (
+                        <div key={item.id} className={`border rounded-lg p-4 ${getStatusColor(item.status)}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
+                                {getStatusIcon(item.status)}
+                                <span className="font-medium text-sm">#{item.ordem}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingCronograma(editingCronograma === item.id ? null : item.id)}
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeCronogramaItem(item.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {editingCronograma === item.id ? (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`dataInicio-${item.id}`} className="text-sm">Data de Início</Label>
+                                  <Input
+                                    id={`dataInicio-${item.id}`}
+                                    type="date"
+                                    value={item.dataInicio}
+                                    onChange={(e) => updateCronogramaItem(item.id, 'dataInicio', e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`dataFim-${item.id}`} className="text-sm">Data de Fim</Label>
+                                  <Input
+                                    id={`dataFim-${item.id}`}
+                                    type="date"
+                                    value={item.dataFim}
+                                    onChange={(e) => updateCronogramaItem(item.id, 'dataFim', e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor={`atividade-${item.id}`} className="text-sm">Descrição da Atividade</Label>
+                                <Input
+                                  id={`atividade-${item.id}`}
+                                  placeholder="Ex: identificar locais de isolamentos"
+                                  value={item.atividade}
+                                  onChange={(e) => updateCronogramaItem(item.id, 'atividade', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`status-${item.id}`} className="text-sm">Status</Label>
+                                <select
+                                  id={`status-${item.id}`}
+                                  value={item.status}
+                                  onChange={(e) => updateCronogramaItem(item.id, 'status', e.target.value)}
+                                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  <option value="pendente">Pendente</option>
+                                  <option value="em_andamento">Em Andamento</option>
+                                  <option value="concluido">Concluído</option>
+                                </select>
+                              </div>
+                              <div>
+                                <Label htmlFor={`observacoes-${item.id}`} className="text-sm">Observações</Label>
+                                <Textarea
+                                  id={`observacoes-${item.id}`}
+                                  placeholder="Observações adicionais..."
+                                  value={item.observacoes}
+                                  onChange={(e) => updateCronogramaItem(item.id, 'observacoes', e.target.value)}
+                                  rows={3}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center space-x-4 text-sm">
+                                <span className="font-medium">
+                                  {new Date(item.dataInicio).toLocaleDateString('pt-BR')} até {new Date(item.dataFim).toLocaleDateString('pt-BR')}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                                  {item.status === 'pendente' && 'Pendente'}
+                                  {item.status === 'em_andamento' && 'Em Andamento'}
+                                  {item.status === 'concluido' && 'Concluído'}
+                                </span>
+                              </div>
+                              <p className="text-gray-700">{item.atividade}</p>
+                              {item.observacoes && (
+                                <p className="text-sm text-gray-600 italic">{item.observacoes}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Exemplo baseado no que o cliente enviou */}
+                  {cronograma.length === 0 && (
+                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Exemplo baseado no seu projeto:</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• Dia 23/06 a 25/06: identificar locais de isolamentos</p>
+                        <p>• Dia 26/06 a 30/06: identificar e reparar trincas e buracos existentes no muro lateral</p>
+                        <p>• Dia 01/07 a 07/07: alinhamento e reforço estrutural aonde for necessário no muro lateral</p>
+                        <p>• Demolição do muro dos fundos (aguardando entrega das placas e pilares)</p>
+                        <p>• Bota fora</p>
+                        <p>• Limpeza da área demolida</p>
+                        <p>• Construção do muro lateral do posto</p>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">Clique em &quot;Adicionar Atividade&quot; para criar seu cronograma personalizado</p>
+                    </div>
+                  )}
+
+                  {/* Informações sobre o PDF */}
+                  {cronograma.length > 0 && (
+                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <h4 className="font-medium text-green-900 mb-2 flex items-center">
+                        <Download className="w-4 h-4 mr-2" />
+                        Relatório PDF do Cronograma
+                      </h4>
+                      <div className="text-sm text-green-800 space-y-1">
+                        <p>✅ <strong>{cronograma.length}</strong> atividade(s) será(ão) incluída(s) no PDF</p>
+                        <p>📋 Cronograma ordenado por sequência de execução</p>
+                        <p>🎨 Mesmo template visual do relatório de obra</p>
+                        <p>📊 Inclui resumo com estatísticas de progresso</p>
+                        <p>🏢 Cabeçalho profissional da JWS Empreiteira</p>
+                      </div>
+                      <p className="text-xs text-green-600 mt-2">Clique em &quot;Baixar PDF&quot; para gerar o cronograma formatado</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
