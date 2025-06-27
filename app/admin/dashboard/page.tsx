@@ -58,6 +58,13 @@ interface ReportData {
   finalConsiderations: string;
 }
 
+interface PremiereData {
+  services: ServiceData[];
+  resultImage: File | null;
+  config: ReportConfig;
+  finalConsiderations: string;
+}
+
 interface CronogramaItem {
   id: string;
   dataInicio: string;
@@ -94,7 +101,32 @@ export default function AdminDashboard() {
     },
     finalConsiderations: ''
   });
+  const [premiereData, setPremiereData] = useState<PremiereData>({
+    services: [{ 
+      id: '1', 
+      name: '', 
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      observations: '',
+      images: [] 
+    }],
+    resultImage: null,
+    config: {
+      includeCompanyHeader: true,
+      includeServicesList: true,
+      includeServiceDates: true,
+      includeServiceObservations: true,
+      includeImageComments: true,
+      includeResultImage: true,
+      includePhotographicReport: true,
+      includeHeaderFooter: true,
+      includeFinalConsiderations: true
+    },
+    finalConsiderations: ''
+  });
+  const [premiereLocation, setPremiereLocation] = useState('Hotel Marupiara');
   const [activeServiceId, setActiveServiceId] = useState('1');
+  const [activePremiereServiceId, setActivePremiereServiceId] = useState('1');
   const [message, setMessage] = useState('');
   const [cronograma, setCronograma] = useState<CronogramaItem[]>([]);
   const [editingCronograma, setEditingCronograma] = useState<string | null>(null);
@@ -525,6 +557,272 @@ export default function AdminDashboard() {
     return reportData.services.reduce((total, service) => total + service.images.length, 0);
   };
 
+  // Funções para gerenciar serviços do Premiere
+  const addPremiereService = () => {
+    const newId = Date.now().toString();
+    setPremiereData(prev => ({
+      ...prev,
+      services: [...prev.services, { 
+        id: newId, 
+        name: '', 
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
+        observations: '',
+        images: [] 
+      }]
+    }));
+    setActivePremiereServiceId(newId);
+  };
+
+  const removePremiereService = (serviceId: string) => {
+    if (premiereData.services.length <= 1) return;
+    
+    const newServices = premiereData.services.filter(service => service.id !== serviceId);
+    setPremiereData(prev => ({
+      ...prev,
+      services: newServices
+    }));
+    
+    if (activePremiereServiceId === serviceId) {
+      setActivePremiereServiceId(newServices[0].id);
+    }
+  };
+
+  const updatePremiereServiceName = (serviceId: string, name: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, name }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereServiceStartDate = (serviceId: string, startDate: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, startDate }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereServiceEndDate = (serviceId: string, endDate: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, endDate }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereServiceObservations = (serviceId: string, observations: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, observations }
+          : service
+      )
+    }));
+  };
+
+  const handlePremiereImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newImages = Array.from(files).map(file => ({ file, comment: '' }));
+    
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === activePremiereServiceId
+          ? { ...service, images: [...service.images, ...newImages] }
+          : service
+      )
+    }));
+  };
+
+  const removePremiereImage = (serviceId: string, index: number) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? { ...service, images: service.images.filter((_, i) => i !== index) }
+          : service
+      )
+    }));
+  };
+
+  const removeAllPremiereImagesFromService = (serviceId: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? { ...service, images: [] }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereImageComment = (serviceId: string, imageIndex: number, comment: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? {
+              ...service,
+              images: service.images.map((img, i) => 
+                i === imageIndex ? { ...img, comment } : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereConfig = (key: keyof ReportConfig, value: boolean) => {
+    setPremiereData(prev => ({
+      ...prev,
+      config: { ...prev.config, [key]: value }
+    }));
+  };
+
+  const updatePremiereFinalConsiderations = (text: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      finalConsiderations: text
+    }));
+  };
+
+  const handlePremiereResultImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPremiereData(prev => ({ ...prev, resultImage: file }));
+    }
+  };
+
+  const removePremiereResultImage = () => {
+    setPremiereData(prev => ({ ...prev, resultImage: null }));
+  };
+
+  const getActivePremiereService = () => {
+    return premiereData.services.find(service => service.id === activePremiereServiceId);
+  };
+
+  const getTotalPremiereImages = () => {
+    return premiereData.services.reduce((total, service) => total + service.images.length, 0);
+  };
+
+  const generatePremierePDF = async () => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      console.log('Iniciando geração de relatório Premiere...');
+
+      if (premiereData.services.length === 0) {
+        setMessage('Adicione pelo menos um serviço antes de gerar o relatório.');
+        setLoading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('services', JSON.stringify(premiereData.services));
+      formData.append('config', JSON.stringify(premiereData.config));
+      formData.append('finalConsiderations', premiereData.finalConsiderations);
+      formData.append('location', premiereLocation);
+
+      console.log('FormData base criado');
+
+      let imageIndex = 0;
+      premiereData.services.forEach((service) => {
+        service.images.forEach((imageData) => {
+          formData.append(`image_${imageIndex}`, imageData.file);
+          formData.append(`image_${imageIndex}_serviceId`, service.id);
+          formData.append(`image_${imageIndex}_comment`, imageData.comment);
+          imageIndex++;
+        });
+      });
+
+      if (premiereData.resultImage) {
+        formData.append('resultImage', premiereData.resultImage);
+        console.log('Imagem de resultado Premiere adicionada');
+      }
+
+      console.log('FormData criado, enviando requisição...');
+
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        setMessage('Token de autenticação não encontrado. Faça login novamente.');
+        setLoading(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutos
+
+      console.log('Enviando requisição para:', '/api/admin/generate-premiere-report');
+      console.log('Token presente:', !!token);
+
+      const response = await fetch('/api/admin/generate-premiere-report', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      console.log('Resposta recebida:', response.status, response.statusText);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `diario_obra_premiere_${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setMessage('Diário de Obra Premiere gerado com sucesso!');
+      } else {
+        let errorMessage = 'Erro ao gerar relatório Premiere';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || error.details || errorMessage;
+          console.error('Erro detalhado da API:', error);
+        } catch (parseError) {
+          console.error('Erro ao parsear resposta de erro:', parseError);
+          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+        }
+        setMessage(errorMessage);
+      }
+    } catch (error: any) {
+      console.error('Erro capturado:', error);
+      
+      if (error.name === 'AbortError') {
+        setMessage('Timeout: O processamento demorou muito. Tente com menos imagens.');
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setMessage('Erro de conexão: Verifique se o servidor está rodando. Tente recarregar a página.');
+      } else {
+        setMessage(`Erro ao gerar relatório Premiere: ${error.message || 'Erro desconhecido'}`);
+      }
+      console.error('Erro detalhado:', error);
+      console.error('Tipo do erro:', error.name);
+      console.error('Stack:', error.stack);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generatePDF = async () => {
     setLoading(true);
     setMessage('');
@@ -727,15 +1025,19 @@ export default function AdminDashboard() {
                 JWS Admin Dashboard
               </CardTitle>
               <CardDescription>
-                Gerencie relatórios de obra e cronogramas de projeto
+                Gerencie relatórios de obra, diários Premiere (4 fotos grandes por página) e cronogramas de projeto
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="relatorio" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="relatorio" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     Relatório de Obra
+                  </TabsTrigger>
+                  <TabsTrigger value="premiere" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Premiere
                   </TabsTrigger>
                   <TabsTrigger value="cronograma" className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -1156,6 +1458,409 @@ export default function AdminDashboard() {
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
               </Button>
+                </TabsContent>
+
+                <TabsContent value="premiere" className="space-y-6 mt-6">
+                  {/* Seção de Configuração do Relatório Premiere */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-lg font-semibold">Configuração do Relatório Premiere</Label>
+                      <span className="text-sm text-gray-500">
+                        {Object.values(premiereData.config).filter(Boolean).length} de {Object.keys(premiereData.config).length} elementos ativos
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeCompanyHeader"
+                          checked={premiereData.config.includeCompanyHeader}
+                          onChange={(e) => updatePremiereConfig('includeCompanyHeader', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeCompanyHeader" className="text-sm">Cabeçalho da Empresa</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeServicesList"
+                          checked={premiereData.config.includeServicesList}
+                          onChange={(e) => updatePremiereConfig('includeServicesList', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeServicesList" className="text-sm">Lista de Serviços</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeServiceDates"
+                          checked={premiereData.config.includeServiceDates}
+                          onChange={(e) => updatePremiereConfig('includeServiceDates', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeServiceDates" className="text-sm">Datas dos Serviços</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeServiceObservations"
+                          checked={premiereData.config.includeServiceObservations}
+                          onChange={(e) => updatePremiereConfig('includeServiceObservations', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeServiceObservations" className="text-sm">Observações dos Serviços</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeImageComments"
+                          checked={premiereData.config.includeImageComments}
+                          onChange={(e) => updatePremiereConfig('includeImageComments', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeImageComments" className="text-sm">Comentários das Imagens</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeResultImage"
+                          checked={premiereData.config.includeResultImage}
+                          onChange={(e) => updatePremiereConfig('includeResultImage', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeResultImage" className="text-sm">Imagem de Resultado</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includePhotographicReport"
+                          checked={premiereData.config.includePhotographicReport}
+                          onChange={(e) => updatePremiereConfig('includePhotographicReport', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includePhotographicReport" className="text-sm">Texto &quot;Relatório Fotográfico&quot;</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeHeaderFooter"
+                          checked={premiereData.config.includeHeaderFooter}
+                          onChange={(e) => updatePremiereConfig('includeHeaderFooter', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeHeaderFooter" className="text-sm">Header e Footer com Logo</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeFinalConsiderations"
+                          checked={premiereData.config.includeFinalConsiderations}
+                          onChange={(e) => updatePremiereConfig('includeFinalConsiderations', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeFinalConsiderations" className="text-sm">Considerações Finais</Label>
+                      </div>
+                    </div>
+                    
+                    {Object.values(premiereData.config).filter(Boolean).length < 3 && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-700">
+                          ⚠️ Atenção: Poucas opções estão ativas. Verifique se o relatório terá o conteúdo necessário.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Seção de Serviços Premiere */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-lg font-semibold">Serviços Premiere ({premiereData.services.length})</Label>
+                      <Button onClick={addPremiereService} variant="outline" size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Serviço
+                      </Button>
+                    </div>
+
+                    {/* Abas dos Serviços Premiere */}
+                    <div className="border rounded-lg">
+                      <div className="flex border-b overflow-x-auto">
+                        {premiereData.services.map((service, index) => (
+                          <div key={service.id} className="flex items-center">
+                            <button
+                              onClick={() => setActivePremiereServiceId(service.id)}
+                              className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                                activePremiereServiceId === service.id
+                                  ? 'bg-purple-50 text-purple-700 border-b-2 border-purple-700'
+                                  : 'text-gray-500 hover:text-gray-700'
+                              }`}
+                            >
+                              Serviço {index + 1}
+                              {service.images.length > 0 && (
+                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                                  {service.images.length}
+                                </span>
+                              )}
+                            </button>
+                            {premiereData.services.length > 1 && (
+                              <button
+                                onClick={() => removePremiereService(service.id)}
+                                className="p-1 text-red-500 hover:text-red-700"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Conteúdo do Serviço Ativo Premiere */}
+                      <div className="p-4 space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="premiere-service-name">Nome do Serviço</Label>
+                          <Input
+                            id="premiere-service-name"
+                            placeholder="Ex: Limpeza de fachada, Pintura, etc."
+                            value={getActivePremiereService()?.name || ''}
+                            onChange={(e) => updatePremiereServiceName(activePremiereServiceId, e.target.value)}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="premiere-start-date">Data de Início</Label>
+                            <Input
+                              id="premiere-start-date"
+                              type="date"
+                              value={getActivePremiereService()?.startDate || ''}
+                              onChange={(e) => updatePremiereServiceStartDate(activePremiereServiceId, e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="premiere-end-date">Data de Término</Label>
+                            <Input
+                              id="premiere-end-date"
+                              type="date"
+                              value={getActivePremiereService()?.endDate || ''}
+                              onChange={(e) => updatePremiereServiceEndDate(activePremiereServiceId, e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="premiere-observations">Observações do Serviço</Label>
+                          <Textarea
+                            id="premiere-observations"
+                            placeholder="Descreva detalhes importantes sobre o serviço executado..."
+                            value={getActivePremiereService()?.observations || ''}
+                            onChange={(e) => updatePremiereServiceObservations(activePremiereServiceId, e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+
+                        {/* Upload de Imagens Premiere */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                                                       <Label>Fotos do Serviço ({getActivePremiereService()?.images.length || 0})</Label>
+                             {(getActivePremiereService()?.images.length || 0) > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeAllPremiereImagesFromService(activePremiereServiceId)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Remover Todas
+                              </Button>
+                            )}
+                          </div>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                            <Camera className="mx-auto h-12 w-12 text-gray-400" />
+                            <p className="mt-2 text-sm text-gray-600">
+                              Arraste imagens aqui ou clique para selecionar
+                            </p>
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={handlePremiereImageUpload}
+                              className="hidden"
+                              id="premiere-image-upload"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => document.getElementById('premiere-image-upload')?.click()}
+                            >
+                              Selecionar Imagens
+                            </Button>
+                          </div>
+
+                                                     {/* Galeria de Imagens Premiere */}
+                           {(getActivePremiereService()?.images.length || 0) > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                              {getActivePremiereService()?.images.map((imageData, index) => (
+                                <div key={index} className="relative group border rounded-lg overflow-hidden">
+                                  <img
+                                    src={URL.createObjectURL(imageData.file)}
+                                    alt={`Foto ${index + 1}`}
+                                    className="w-full h-32 object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button
+                                      onClick={() => removePremiereImage(activePremiereServiceId, index)}
+                                      className="text-white hover:text-red-300"
+                                    >
+                                      <Trash2 className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                  <div className="p-2">
+                                    <Textarea
+                                      placeholder="Comentário da imagem..."
+                                      value={imageData.comment}
+                                      onChange={(e) => updatePremiereImageComment(activePremiereServiceId, index, e.target.value)}
+                                      rows={2}
+                                      className="text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Imagem de Resultado Final Premiere */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Imagem de Resultado Final (Opcional)</Label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                      {premiereData.resultImage ? (
+                        <div className="space-y-4">
+                          <img
+                            src={URL.createObjectURL(premiereData.resultImage)}
+                            alt="Resultado final"
+                            className="mx-auto max-h-40 rounded-lg"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={removePremiereResultImage}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Remover Imagem
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Camera className="mx-auto h-12 w-12 text-gray-400" />
+                          <p className="mt-2 text-sm text-gray-600">
+                            Adicione uma imagem que mostra o resultado final do trabalho
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePremiereResultImageUpload}
+                            className="hidden"
+                            id="premiere-result-image-upload"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => document.getElementById('premiere-result-image-upload')?.click()}
+                          >
+                            Selecionar Imagem
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Local da Obra Premiere */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Local da Obra</Label>
+                    <Input
+                      placeholder="Ex: Hotel Marupiara, Edifício Copacabana, etc."
+                      value={premiereLocation}
+                      onChange={(e) => setPremiereLocation(e.target.value)}
+                    />
+                    <p className="text-sm text-gray-600">
+                      Este nome aparecerá na página de título do Diário de Obra
+                    </p>
+                  </div>
+
+                  {/* Considerações Finais Premiere */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Considerações Finais</Label>
+                    <Textarea
+                      placeholder="Adicione observações finais, recomendações ou conclusões sobre os serviços executados..."
+                      value={premiereData.finalConsiderations}
+                      onChange={(e) => updatePremiereFinalConsiderations(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Resumo e Geração do Relatório Premiere */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-purple-900">Resumo do Diário de Obra Premiere</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-700">{premiereData.services.length}</div>
+                        <div className="text-sm text-purple-600">Serviços</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-700">{getTotalPremiereImages()}</div>
+                        <div className="text-sm text-purple-600">Fotos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-700">{Math.ceil(getTotalPremiereImages() / 4)}</div>
+                        <div className="text-sm text-purple-600">Páginas de Fotos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-700">
+                          {premiereLocation ? '✓' : '✗'}
+                        </div>
+                        <div className="text-sm text-purple-600">Local Definido</div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4 p-3 bg-white rounded border">
+                      <p className="text-sm text-purple-800">
+                        <strong>Local da Obra:</strong> {premiereLocation || 'Não definido'}
+                      </p>
+                                           <p className="text-sm text-purple-600 mt-1">
+                       Este diário será gerado com 4 fotos grandes por página em layout 2x2 com fundo degradê azul-branco
+                     </p>
+                    </div>
+
+                    <Button
+                      onClick={generatePremierePDF}
+                      disabled={loading || premiereData.services.length === 0}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      size="lg"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      {loading ? 'Gerando Diário de Obra...' : 'Gerar Diário de Obra PDF'}
+                    </Button>
+
+                    {message && (
+                      <Alert className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{message}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="cronograma" className="space-y-6 mt-6">
