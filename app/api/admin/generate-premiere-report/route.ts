@@ -197,29 +197,7 @@ export async function POST(request: NextRequest) {
         pdf.rect(0, i * stepHeight, pageWidth, stepHeight + 1, 'F');
       }
       
-      // Efeitos geométricos modernos no lado direito
-      // Círculo grande
-      pdf.setFillColor(90, 150, 200, 0.15);
-      pdf.circle(pageWidth - 40, pageHeight * 0.25, 50, 'F');
-      
-      // Formas geométricas sobrepostas
-      pdf.setFillColor(60, 120, 180, 0.2);
-      pdf.rect(pageWidth - 80, pageHeight * 0.6, 60, 20, 'F');
-      
-      pdf.setFillColor(100, 160, 220, 0.25);
-      pdf.rect(pageWidth - 70, pageHeight * 0.65, 50, 15, 'F');
-      
-      // Círculos decorativos menores
-      pdf.setFillColor(80, 140, 190, 0.3);
-      pdf.circle(pageWidth - 20, pageHeight * 0.15, 15, 'F');
-      pdf.circle(pageWidth - 15, pageHeight * 0.85, 10, 'F');
-      
-      // Linhas decorativas
-      pdf.setDrawColor(70, 130, 180, 0.4);
-      pdf.setLineWidth(2);
-      pdf.line(pageWidth - 90, pageHeight * 0.4, pageWidth - 10, pageHeight * 0.45);
-      pdf.setLineWidth(1);
-      pdf.line(pageWidth - 85, pageHeight * 0.75, pageWidth - 25, pageHeight * 0.78);
+
       
       // Logo da Premiere bem centralizada (otimizada para horizontal)
       if (premiereLogo) {
@@ -265,29 +243,7 @@ export async function POST(request: NextRequest) {
         pdf.rect(0, i * stepHeight, pageWidth, stepHeight + 1, 'F');
       }
       
-      // Efeitos geométricos modernos no lado direito (variação da capa)
-      // Círculo médio
-      pdf.setFillColor(90, 150, 200, 0.2);
-      pdf.circle(pageWidth - 35, pageHeight * 0.3, 35, 'F');
-      
-      // Retângulos em diagonal
-      pdf.setFillColor(60, 120, 180, 0.25);
-      pdf.rect(pageWidth - 75, pageHeight * 0.55, 55, 12, 'F');
-      
-      pdf.setFillColor(100, 160, 220, 0.15);
-      pdf.rect(pageWidth - 85, pageHeight * 0.6, 45, 8, 'F');
-      
-      // Círculos pequenos espalhados
-      pdf.setFillColor(80, 140, 190, 0.25);
-      pdf.circle(pageWidth - 25, pageHeight * 0.2, 12, 'F');
-      pdf.circle(pageWidth - 18, pageHeight * 0.8, 8, 'F');
-      pdf.circle(pageWidth - 60, pageHeight * 0.15, 6, 'F');
-      
-      // Linha decorativa curvada (simulada com segmentos)
-      pdf.setDrawColor(70, 130, 180, 0.3);
-      pdf.setLineWidth(1.5);
-      pdf.line(pageWidth - 90, pageHeight * 0.35, pageWidth - 30, pageHeight * 0.42);
-      pdf.line(pageWidth - 80, pageHeight * 0.7, pageWidth - 20, pageHeight * 0.75);
+
       
       // Logo da Premiere centralizada (otimizada para horizontal)
       if (premiereLogo) {
@@ -340,17 +296,7 @@ export async function POST(request: NextRequest) {
           pdf.rect(0, i * stepHeight, pageWidth, stepHeight + 1, 'F');
         }
         
-        // Efeitos geométricos sutis no canto direito para páginas de fotos
-        pdf.setFillColor(90, 150, 200, 0.08);
-        pdf.circle(pageWidth - 25, pageHeight * 0.1, 20, 'F');
-        
-        pdf.setFillColor(70, 130, 180, 0.1);
-        pdf.rect(pageWidth - 50, pageHeight * 0.9, 40, 8, 'F');
-        
-        // Pequenos círculos decorativos bem sutis
-        pdf.setFillColor(80, 140, 190, 0.06);
-        pdf.circle(pageWidth - 15, pageHeight * 0.3, 8, 'F');
-        pdf.circle(pageWidth - 12, pageHeight * 0.7, 6, 'F');
+
         
         // Margens otimizadas para orientação horizontal
         const margin = 10;
@@ -453,8 +399,8 @@ export async function POST(request: NextRequest) {
      if (servicesData.length > 0) {
        const dates = servicesData.filter((s: any) => s.startDate || s.endDate);
        if (dates.length > 0) {
-         const startDates = dates.filter((s: any) => s.startDate).map((s: any) => new Date(s.startDate));
-         const endDates = dates.filter((s: any) => s.endDate).map((s: any) => new Date(s.endDate));
+         const startDates = dates.filter((s: any) => s.startDate).map((s: any) => new Date(s.startDate + 'T12:00:00'));
+         const endDates = dates.filter((s: any) => s.endDate).map((s: any) => new Date(s.endDate + 'T12:00:00'));
          
          if (startDates.length > 0 && endDates.length > 0) {
                        const minDate = new Date(Math.min(...startDates.map((d: Date) => d.getTime())));
