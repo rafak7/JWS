@@ -434,13 +434,33 @@ export async function POST(request: NextRequest) {
       console.log('Criando página de título...');
       addTitlePage(dateRange, workLocation);
 
-     // Processar imagens em grupos de 4
+     // Processar imagens por serviço (cada serviço em páginas separadas)
      if (images.length > 0) {
-       console.log(`Processando ${images.length} imagens em páginas de 4...`);
+       console.log(`Processando ${images.length} imagens organizadas por serviço...`);
        
-       for (let i = 0; i < images.length; i += 4) {
-         console.log(`Criando página de fotos ${Math.floor(i / 4) + 1}...`);
-         await add4PhotosPage(images, i, 4);
+       // Organizar imagens por serviço
+       const imagesByService: { [key: string]: any[] } = {};
+       
+       for (const image of images) {
+         if (!imagesByService[image.serviceId]) {
+           imagesByService[image.serviceId] = [];
+         }
+         imagesByService[image.serviceId].push(image);
+       }
+       
+       // Processar cada serviço separadamente
+       for (const service of servicesData) {
+         const serviceImages = imagesByService[service.id] || [];
+         
+         if (serviceImages.length > 0) {
+           console.log(`Processando serviço "${service.name}" com ${serviceImages.length} imagens...`);
+           
+           // Processar imagens do serviço em grupos de 4
+           for (let i = 0; i < serviceImages.length; i += 4) {
+             console.log(`Criando página de fotos do serviço "${service.name}" - página ${Math.floor(i / 4) + 1}...`);
+             await add4PhotosPage(serviceImages, i, 4);
+           }
+         }
        }
      } else {
        console.log('Nenhuma imagem para processar');
