@@ -95,6 +95,10 @@ export async function POST(request: NextRequest) {
     
     console.log('Dados básicos processados');
     
+    // Recuperar nome do relatório e descrição
+    const reportName = formData.get('reportName') as string || 'Relatório de Obra';
+    const reportDescription = formData.get('reportDescription') as string || '';
+    
     let servicesData = [];
     try {
       servicesData = JSON.parse(formData.get('services') as string || '[]');
@@ -243,31 +247,50 @@ export async function POST(request: NextRequest) {
         pdf.rect(0, i * stepHeight, pageWidth, stepHeight + 1, 'F');
       }
       
-
-      
       // Logo da Premiere centralizada (otimizada para horizontal)
       if (premiereLogo) {
         const logoSize = 60; // Logo maior para página de título horizontal
         const logoX = (pageWidth - logoSize) / 2;
-        const logoY = (pageHeight - logoSize) / 2 - 25; // Centro da página, um pouco para cima
+        const logoY = pageHeight / 2 - 75; // Movido mais para cima para dar espaço aos novos campos
         
         pdf.addImage(premiereLogo, 'PNG', logoX, logoY, logoSize, logoSize);
       }
       
-      // Título do diário abaixo da logo
-      pdf.setFontSize(24); // Texto maior para orientação horizontal
+      // Nome do relatório personalizado
+      pdf.setFontSize(28);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 255, 255);
+      const reportTitleWidth = pdf.getTextWidth(reportName);
+      pdf.text(reportName, (pageWidth - reportTitleWidth) / 2, (pageHeight / 2) - 10);
+      
+      // Título do diário abaixo do nome do relatório
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
       const diaryTitle = `Diário de Obra (${dateRange})`;
       const diaryTitleWidth = pdf.getTextWidth(diaryTitle);
-      pdf.text(diaryTitle, (pageWidth - diaryTitleWidth) / 2, (pageHeight / 2) + 8);
+      pdf.text(diaryTitle, (pageWidth - diaryTitleWidth) / 2, (pageHeight / 2) + 10);
       
       // Local
-      pdf.setFontSize(18); // Texto maior também
+      pdf.setFontSize(18);
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
       const locationWidth = pdf.getTextWidth(location);
       pdf.text(location, (pageWidth - locationWidth) / 2, (pageHeight / 2) + 30);
+      
+      // Descrição do relatório
+      if (reportDescription) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'italic');
+        
+        // Quebra de texto se for muito longo
+        const maxWidth = pageWidth - 80;
+        const textLines = pdf.splitTextToSize(reportDescription, maxWidth);
+        
+        // Calcular posição Y baseada no número de linhas
+        const lineHeight = 7;
+        const descriptionY = (pageHeight / 2) + 50;
+        
+        pdf.text(textLines, (pageWidth - maxWidth) / 2, descriptionY);
+      }
       
       // Reset completo de estilos
       pdf.setTextColor(0, 0, 0);
