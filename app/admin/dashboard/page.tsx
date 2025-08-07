@@ -30,6 +30,12 @@ interface ImageData {
   comment: string;
 }
 
+interface ProcessImageData {
+  file: File;
+  comment: string;
+  phase: 'antes' | 'durante' | 'depois';
+}
+
 interface ServiceData {
   id: string;
   name: string;
@@ -37,6 +43,7 @@ interface ServiceData {
   endDate: string;
   observations: string;
   images: ImageData[];
+  processImages: ProcessImageData[];
 }
 
 interface ReportConfig {
@@ -49,6 +56,7 @@ interface ReportConfig {
   includePhotographicReport: boolean;
   includeHeaderFooter: boolean;
   includeFinalConsiderations: boolean;
+  includeProcessImages: boolean;
 }
 
 interface ReportData {
@@ -73,6 +81,12 @@ interface Mark1Data {
   finalConsiderations: string;
 }
 
+interface ProcessReportData {
+  workName: string;
+  workDate: string;
+  processImages: ProcessImageData[];
+}
+
 interface CronogramaItem {
   id: string;
   dataInicio: string;
@@ -93,7 +107,8 @@ export default function AdminDashboard() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
       observations: '',
-      images: [] 
+      images: [],
+      processImages: []
     }],
     resultImage: null,
     config: {
@@ -105,7 +120,8 @@ export default function AdminDashboard() {
       includeResultImage: true,
       includePhotographicReport: true,
       includeHeaderFooter: true,
-      includeFinalConsiderations: true
+      includeFinalConsiderations: true,
+      includeProcessImages: true
     },
     finalConsiderations: ''
   });
@@ -116,7 +132,8 @@ export default function AdminDashboard() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
       observations: '',
-      images: [] 
+      images: [],
+      processImages: []
     }],
     resultImage: null,
     config: {
@@ -128,7 +145,8 @@ export default function AdminDashboard() {
       includeResultImage: true,
       includePhotographicReport: true,
       includeHeaderFooter: true,
-      includeFinalConsiderations: true
+      includeFinalConsiderations: true,
+      includeProcessImages: true
     },
     finalConsiderations: ''
   });
@@ -139,7 +157,8 @@ export default function AdminDashboard() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
       observations: '',
-      images: [] 
+      images: [],
+      processImages: []
     }],
     resultImage: null,
     flowcharts: [], // Inicializando array de fluxogramas
@@ -152,7 +171,8 @@ export default function AdminDashboard() {
       includeResultImage: true,
       includePhotographicReport: true,
       includeHeaderFooter: true,
-      includeFinalConsiderations: true
+      includeFinalConsiderations: true,
+      includeProcessImages: true
     },
     finalConsiderations: ''
   });
@@ -160,6 +180,11 @@ export default function AdminDashboard() {
   const [premiereReportName, setPremiereReportName] = useState('Relatório de Obra');
   const [premiereReportDescription, setPremiereReportDescription] = useState('');
   const [mark1Location, setMark1Location] = useState('Local da Obra');
+  const [processReportData, setProcessReportData] = useState<ProcessReportData>({
+    workName: '',
+    workDate: new Date().toISOString().split('T')[0],
+    processImages: []
+  });
   const [activeServiceId, setActiveServiceId] = useState('1');
   const [activePremiereServiceId, setActivePremiereServiceId] = useState('1');
   const [activeMark1ServiceId, setActiveMark1ServiceId] = useState('1');
@@ -221,7 +246,8 @@ export default function AdminDashboard() {
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
         observations: '',
-        images: [] 
+        images: [],
+        processImages: []
       }]
     }));
     setActiveServiceId(newId);
@@ -337,6 +363,185 @@ export default function AdminDashboard() {
           : service
       )
     }));
+  };
+
+  // Funções para gerenciar imagens do processo da obra
+  const handleProcessImageUpload = (e: React.ChangeEvent<HTMLInputElement>, phase: 'antes' | 'durante' | 'depois') => {
+    const files = Array.from(e.target.files || []);
+    const newImages = files.map(file => ({ file, comment: '', phase }));
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === activeServiceId 
+          ? { ...service, processImages: [...service.processImages, ...newImages] }
+          : service
+      )
+    }));
+  };
+
+  const removeProcessImage = (serviceId: string, index: number) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { ...service, processImages: service.processImages.filter((_, i) => i !== index) }
+          : service
+      )
+    }));
+  };
+
+  const updateProcessImageComment = (serviceId: string, imageIndex: number, comment: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { 
+              ...service, 
+              processImages: service.processImages.map((img, index) => 
+                index === imageIndex 
+                  ? { ...img, comment }
+                  : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const getProcessImagesByPhase = (serviceId: string, phase: 'antes' | 'durante' | 'depois') => {
+    const service = reportData.services.find(s => s.id === serviceId);
+    return service?.processImages.filter(img => img.phase === phase) || [];
+  };
+
+  // Funções para o relatório de Processo da Obra
+  const handleProcessReportImageUpload = (e: React.ChangeEvent<HTMLInputElement>, phase: 'antes' | 'durante' | 'depois') => {
+    const files = Array.from(e.target.files || []);
+    const newImages = files.map(file => ({ file, comment: '', phase }));
+    setProcessReportData(prev => ({
+      ...prev,
+      processImages: [...prev.processImages, ...newImages]
+    }));
+  };
+
+  const removeProcessReportImage = (index: number) => {
+    setProcessReportData(prev => ({
+      ...prev,
+      processImages: prev.processImages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateProcessReportImageComment = (imageIndex: number, comment: string) => {
+    setProcessReportData(prev => ({
+      ...prev,
+      processImages: prev.processImages.map((img, index) => 
+        index === imageIndex 
+          ? { ...img, comment }
+          : img
+      )
+    }));
+  };
+
+  const getProcessReportImagesByPhase = (phase: 'antes' | 'durante' | 'depois') => {
+    return processReportData.processImages.filter(img => img.phase === phase);
+  };
+
+  const updateProcessReportWorkName = (name: string) => {
+    setProcessReportData(prev => ({ ...prev, workName: name }));
+  };
+
+  const updateProcessReportWorkDate = (date: string) => {
+    setProcessReportData(prev => ({ ...prev, workDate: date }));
+  };
+
+  const generateProcessReportPDF = async () => {
+    if (processReportData.processImages.length === 0) {
+      setMessage('Adicione pelo menos uma imagem para gerar o relatório.');
+      return;
+    }
+
+    if (!processReportData.workName.trim()) {
+      setMessage('Informe o nome da obra para gerar o relatório.');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const formData = new FormData();
+      
+      // Adicionar dados básicos
+      formData.append('reportType', 'process');
+      formData.append('workName', processReportData.workName);
+      formData.append('workDate', processReportData.workDate);
+      
+      // Adicionar imagens do processo
+      let processImageIndex = 0;
+      processReportData.processImages.forEach((processImageData) => {
+        formData.append(`processImage_${processImageIndex}`, processImageData.file);
+        formData.append(`processImageServiceId_${processImageIndex}`, 'process');
+        formData.append(`processImageServiceName_${processImageIndex}`, 'Processo da Obra');
+        formData.append(`processImageComment_${processImageIndex}`, processImageData.comment);
+        formData.append(`processImagePhase_${processImageIndex}`, processImageData.phase);
+        processImageIndex++;
+      });
+
+      console.log('FormData criado para relatório de processo, enviando requisição...');
+
+      // Verificar se o token existe
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        setMessage('Token de autenticação não encontrado. Faça login novamente.');
+        setLoading(false);
+        return;
+      }
+
+      // Aumentar timeout para muitas imagens
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutos
+
+      console.log('Enviando requisição para:', '/api/admin/generate-process-report');
+      
+      const response = await fetch('/api/admin/generate-process-report', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro na resposta:', response.status, errorText);
+        throw new Error(`Erro ${response.status}: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `processo-obra-${processReportData.workName.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setMessage('Relatório de Processo da Obra gerado com sucesso!');
+      console.log('PDF do processo da obra gerado e baixado com sucesso');
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF do processo da obra:', error);
+      if (error.name === 'AbortError') {
+        setMessage('Timeout: A geração do relatório demorou muito. Tente novamente com menos imagens.');
+      } else {
+        setMessage(`Erro ao gerar relatório: ${error.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateConfig = (key: keyof ReportConfig, value: boolean) => {
@@ -604,7 +809,8 @@ export default function AdminDashboard() {
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
         observations: '',
-        images: [] 
+        images: [],
+        processImages: []
       }]
     }));
     setActivePremiereServiceId(newId);
@@ -766,7 +972,8 @@ export default function AdminDashboard() {
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
         observations: '',
-        images: [] 
+        images: [],
+        processImages: []
       }]
     }));
     setActiveMark1ServiceId(newId);
@@ -1251,6 +1458,18 @@ export default function AdminDashboard() {
         });
       });
 
+      // Adicionar imagens do processo da obra (antes/durante/depois)
+      let processImageIndex = 0;
+      reportData.services.forEach((service) => {
+        service.processImages.forEach((processImageData) => {
+          formData.append(`processImage_${processImageIndex}`, processImageData.file);
+          formData.append(`processImage_${processImageIndex}_serviceId`, service.id);
+          formData.append(`processImage_${processImageIndex}_comment`, processImageData.comment);
+          formData.append(`processImage_${processImageIndex}_phase`, processImageData.phase);
+          processImageIndex++;
+        });
+      });
+
       // Adicionar imagem de resultado se existir
       if (reportData.resultImage) {
         formData.append('resultImage', reportData.resultImage);
@@ -1376,10 +1595,14 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="relatorio" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="relatorio" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     Relatório de Obra
+                  </TabsTrigger>
+                  <TabsTrigger value="processo" className="flex items-center gap-2">
+                    <Camera className="w-4 h-4" />
+                    Processo da Obra
                   </TabsTrigger>
                   <TabsTrigger value="premiere" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
@@ -1502,6 +1725,17 @@ export default function AdminDashboard() {
                       className="rounded"
                     />
                     <Label htmlFor="includeFinalConsiderations" className="text-sm">Considerações Finais</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="includeProcessImages"
+                      checked={reportData.config.includeProcessImages}
+                      onChange={(e) => updateConfig('includeProcessImages', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="includeProcessImages" className="text-sm">Processo da Obra (Antes/Durante/Depois)</Label>
                   </div>
                 </div>
                 
@@ -1710,6 +1944,216 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* Seção de Processo da Obra */}
+                    {reportData.config.includeProcessImages && (
+                      <div className="space-y-4 border-t pt-6">
+                        <Label className="text-lg font-semibold">
+                          Processo da Obra - Antes/Durante/Depois
+                        </Label>
+                        <p className="text-sm text-gray-600">
+                          Organize as fotos por fase da obra para mostrar a evolução do trabalho
+                        </p>
+                        
+                        {/* Abas para as fases */}
+                        <Tabs defaultValue="antes" className="w-full">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="antes" className="flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              Antes ({getProcessImagesByPhase(activeServiceId, 'antes').length})
+                            </TabsTrigger>
+                            <TabsTrigger value="durante" className="flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4" />
+                              Durante ({getProcessImagesByPhase(activeServiceId, 'durante').length})
+                            </TabsTrigger>
+                            <TabsTrigger value="depois" className="flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4" />
+                              Depois ({getProcessImagesByPhase(activeServiceId, 'depois').length})
+                            </TabsTrigger>
+                          </TabsList>
+                          
+                          {/* Conteúdo da aba Antes */}
+                          <TabsContent value="antes" className="space-y-4">
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                              <div className="text-center">
+                                <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                                <div className="mt-2">
+                                  <Label htmlFor={`process-antes-${activeServiceId}`} className="cursor-pointer">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Adicionar fotos do ANTES
+                                    </span>
+                                    <Input
+                                      id={`process-antes-${activeServiceId}`}
+                                      type="file"
+                                      multiple
+                                      accept="image/*"
+                                      onChange={(e) => handleProcessImageUpload(e, 'antes')}
+                                      className="hidden"
+                                    />
+                                  </Label>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {getProcessImagesByPhase(activeServiceId, 'antes').length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {getProcessImagesByPhase(activeServiceId, 'antes').map((imageData, index) => {
+                                  const globalIndex = reportData.services.find(s => s.id === activeServiceId)?.processImages.findIndex(img => img === imageData) || 0;
+                                  return (
+                                    <div key={index} className="space-y-2">
+                                      <div className="relative">
+                                        <img
+                                          src={URL.createObjectURL(imageData.file)}
+                                          alt={`Antes ${index + 1}`}
+                                          className="w-full h-24 object-cover rounded-lg"
+                                        />
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute top-1 right-1 h-5 w-5 p-0"
+                                          onClick={() => removeProcessImage(activeServiceId, globalIndex)}
+                                        >
+                                          <Trash2 className="h-2 w-2" />
+                                        </Button>
+                                        <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-1 rounded">
+                                          ANTES {index + 1}
+                                        </span>
+                                      </div>
+                                      <Input
+                                        placeholder="Comentário da foto (opcional)"
+                                        value={imageData.comment}
+                                        onChange={(e) => updateProcessImageComment(activeServiceId, globalIndex, e.target.value)}
+                                        className="text-xs"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </TabsContent>
+                          
+                          {/* Conteúdo da aba Durante */}
+                          <TabsContent value="durante" className="space-y-4">
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                              <div className="text-center">
+                                <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                                <div className="mt-2">
+                                  <Label htmlFor={`process-durante-${activeServiceId}`} className="cursor-pointer">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Adicionar fotos do DURANTE
+                                    </span>
+                                    <Input
+                                      id={`process-durante-${activeServiceId}`}
+                                      type="file"
+                                      multiple
+                                      accept="image/*"
+                                      onChange={(e) => handleProcessImageUpload(e, 'durante')}
+                                      className="hidden"
+                                    />
+                                  </Label>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {getProcessImagesByPhase(activeServiceId, 'durante').length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {getProcessImagesByPhase(activeServiceId, 'durante').map((imageData, index) => {
+                                  const globalIndex = reportData.services.find(s => s.id === activeServiceId)?.processImages.findIndex(img => img === imageData) || 0;
+                                  return (
+                                    <div key={index} className="space-y-2">
+                                      <div className="relative">
+                                        <img
+                                          src={URL.createObjectURL(imageData.file)}
+                                          alt={`Durante ${index + 1}`}
+                                          className="w-full h-24 object-cover rounded-lg"
+                                        />
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute top-1 right-1 h-5 w-5 p-0"
+                                          onClick={() => removeProcessImage(activeServiceId, globalIndex)}
+                                        >
+                                          <Trash2 className="h-2 w-2" />
+                                        </Button>
+                                        <span className="absolute bottom-1 left-1 bg-orange-600 text-white text-xs px-1 rounded">
+                                          DURANTE {index + 1}
+                                        </span>
+                                      </div>
+                                      <Input
+                                        placeholder="Comentário da foto (opcional)"
+                                        value={imageData.comment}
+                                        onChange={(e) => updateProcessImageComment(activeServiceId, globalIndex, e.target.value)}
+                                        className="text-xs"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </TabsContent>
+                          
+                          {/* Conteúdo da aba Depois */}
+                          <TabsContent value="depois" className="space-y-4">
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                              <div className="text-center">
+                                <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                                <div className="mt-2">
+                                  <Label htmlFor={`process-depois-${activeServiceId}`} className="cursor-pointer">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Adicionar fotos do DEPOIS
+                                    </span>
+                                    <Input
+                                      id={`process-depois-${activeServiceId}`}
+                                      type="file"
+                                      multiple
+                                      accept="image/*"
+                                      onChange={(e) => handleProcessImageUpload(e, 'depois')}
+                                      className="hidden"
+                                    />
+                                  </Label>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {getProcessImagesByPhase(activeServiceId, 'depois').length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {getProcessImagesByPhase(activeServiceId, 'depois').map((imageData, index) => {
+                                  const globalIndex = reportData.services.find(s => s.id === activeServiceId)?.processImages.findIndex(img => img === imageData) || 0;
+                                  return (
+                                    <div key={index} className="space-y-2">
+                                      <div className="relative">
+                                        <img
+                                          src={URL.createObjectURL(imageData.file)}
+                                          alt={`Depois ${index + 1}`}
+                                          className="w-full h-24 object-cover rounded-lg"
+                                        />
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute top-1 right-1 h-5 w-5 p-0"
+                                          onClick={() => removeProcessImage(activeServiceId, globalIndex)}
+                                        >
+                                          <Trash2 className="h-2 w-2" />
+                                        </Button>
+                                        <span className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-1 rounded">
+                                          DEPOIS {index + 1}
+                                        </span>
+                                      </div>
+                                      <Input
+                                        placeholder="Comentário da foto (opcional)"
+                                        value={imageData.comment}
+                                        onChange={(e) => updateProcessImageComment(activeServiceId, globalIndex, e.target.value)}
+                                        className="text-xs"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </TabsContent>
+                        </Tabs>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1808,6 +2252,307 @@ export default function AdminDashboard() {
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? 'Gerando PDF...' : 'Gerar Relatório PDF'}
               </Button>
+                </TabsContent>
+
+                <TabsContent value="processo" className="space-y-6 mt-6">
+                  {/* Cabeçalho do Relatório de Processo */}
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
+                    <h3 className="text-xl font-bold text-green-900 mb-2 flex items-center">
+                      <Camera className="w-6 h-6 mr-2" />
+                      Relatório de Processo da Obra
+                    </h3>
+                    <p className="text-green-700">
+                      Crie um relatório focado exclusivamente no processo da obra com fotos organizadas por fases (Antes/Durante/Depois)
+                    </p>
+                  </div>
+
+                  {/* Informações da Obra */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Informações da Obra</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="process-work-name">Nome da Obra *</Label>
+                        <Input
+                          id="process-work-name"
+                          placeholder="Ex: Reforma do Edifício Central, Manutenção Hotel Marupiara..."
+                          value={processReportData.workName}
+                          onChange={(e) => updateProcessReportWorkName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="process-work-date">Data da Obra</Label>
+                        <Input
+                          id="process-work-date"
+                          type="date"
+                          value={processReportData.workDate}
+                          onChange={(e) => updateProcessReportWorkDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seção de Upload de Imagens por Fase */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">
+                      Fotos do Processo ({processReportData.processImages.length} total)
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      Organize as fotos por fase da obra para mostrar a evolução do trabalho
+                    </p>
+                    
+                    {/* Abas para as fases */}
+                    <Tabs defaultValue="antes" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="antes" className="flex items-center gap-2">
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          Antes ({getProcessReportImagesByPhase('antes').length})
+                        </TabsTrigger>
+                        <TabsTrigger value="durante" className="flex items-center gap-2">
+                          <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                          Durante ({getProcessReportImagesByPhase('durante').length})
+                        </TabsTrigger>
+                        <TabsTrigger value="depois" className="flex items-center gap-2">
+                          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                          Depois ({getProcessReportImagesByPhase('depois').length})
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      {/* Conteúdo da aba Antes */}
+                      <TabsContent value="antes" className="space-y-4">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          <div className="text-center">
+                            <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                            <div className="mt-2">
+                              <Label htmlFor="process-report-antes" className="cursor-pointer">
+                                <span className="text-sm font-medium text-gray-900">
+                                  Adicionar fotos do ANTES
+                                </span>
+                                <Input
+                                  id="process-report-antes"
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={(e) => handleProcessReportImageUpload(e, 'antes')}
+                                  className="hidden"
+                                />
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {getProcessReportImagesByPhase('antes').length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getProcessReportImagesByPhase('antes').map((imageData, index) => {
+                              const globalIndex = processReportData.processImages.findIndex(img => img === imageData);
+                              return (
+                                <div key={index} className="space-y-2">
+                                  <div className="relative">
+                                    <img
+                                      src={URL.createObjectURL(imageData.file)}
+                                      alt={`Antes ${index + 1}`}
+                                      className="w-full h-24 object-cover rounded-lg"
+                                    />
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-5 w-5 p-0"
+                                      onClick={() => removeProcessReportImage(globalIndex)}
+                                    >
+                                      <Trash2 className="h-2 w-2" />
+                                    </Button>
+                                    <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-1 rounded">
+                                      ANTES {index + 1}
+                                    </span>
+                                  </div>
+                                  <Input
+                                    placeholder="Comentário da foto (opcional)"
+                                    value={imageData.comment}
+                                    onChange={(e) => updateProcessReportImageComment(globalIndex, e.target.value)}
+                                    className="text-xs"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </TabsContent>
+                      
+                      {/* Conteúdo da aba Durante */}
+                      <TabsContent value="durante" className="space-y-4">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          <div className="text-center">
+                            <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                            <div className="mt-2">
+                              <Label htmlFor="process-report-durante" className="cursor-pointer">
+                                <span className="text-sm font-medium text-gray-900">
+                                  Adicionar fotos do DURANTE
+                                </span>
+                                <Input
+                                  id="process-report-durante"
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={(e) => handleProcessReportImageUpload(e, 'durante')}
+                                  className="hidden"
+                                />
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {getProcessReportImagesByPhase('durante').length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getProcessReportImagesByPhase('durante').map((imageData, index) => {
+                              const globalIndex = processReportData.processImages.findIndex(img => img === imageData);
+                              return (
+                                <div key={index} className="space-y-2">
+                                  <div className="relative">
+                                    <img
+                                      src={URL.createObjectURL(imageData.file)}
+                                      alt={`Durante ${index + 1}`}
+                                      className="w-full h-24 object-cover rounded-lg"
+                                    />
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-5 w-5 p-0"
+                                      onClick={() => removeProcessReportImage(globalIndex)}
+                                    >
+                                      <Trash2 className="h-2 w-2" />
+                                    </Button>
+                                    <span className="absolute bottom-1 left-1 bg-orange-600 text-white text-xs px-1 rounded">
+                                      DURANTE {index + 1}
+                                    </span>
+                                  </div>
+                                  <Input
+                                    placeholder="Comentário da foto (opcional)"
+                                    value={imageData.comment}
+                                    onChange={(e) => updateProcessReportImageComment(globalIndex, e.target.value)}
+                                    className="text-xs"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </TabsContent>
+                      
+                      {/* Conteúdo da aba Depois */}
+                      <TabsContent value="depois" className="space-y-4">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          <div className="text-center">
+                            <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                            <div className="mt-2">
+                              <Label htmlFor="process-report-depois" className="cursor-pointer">
+                                <span className="text-sm font-medium text-gray-900">
+                                  Adicionar fotos do DEPOIS
+                                </span>
+                                <Input
+                                  id="process-report-depois"
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={(e) => handleProcessReportImageUpload(e, 'depois')}
+                                  className="hidden"
+                                />
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {getProcessReportImagesByPhase('depois').length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getProcessReportImagesByPhase('depois').map((imageData, index) => {
+                              const globalIndex = processReportData.processImages.findIndex(img => img === imageData);
+                              return (
+                                <div key={index} className="space-y-2">
+                                  <div className="relative">
+                                    <img
+                                      src={URL.createObjectURL(imageData.file)}
+                                      alt={`Depois ${index + 1}`}
+                                      className="w-full h-24 object-cover rounded-lg"
+                                    />
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-5 w-5 p-0"
+                                      onClick={() => removeProcessReportImage(globalIndex)}
+                                    >
+                                      <Trash2 className="h-2 w-2" />
+                                    </Button>
+                                    <span className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-1 rounded">
+                                      DEPOIS {index + 1}
+                                    </span>
+                                  </div>
+                                  <Input
+                                    placeholder="Comentário da foto (opcional)"
+                                    value={imageData.comment}
+                                    onChange={(e) => updateProcessReportImageComment(globalIndex, e.target.value)}
+                                    className="text-xs"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+
+                  {/* Resumo e Geração do Relatório */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-green-900">Resumo do Relatório de Processo</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-700">{getProcessReportImagesByPhase('antes').length}</div>
+                        <div className="text-sm text-green-600">Fotos Antes</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-700">{getProcessReportImagesByPhase('durante').length}</div>
+                        <div className="text-sm text-green-600">Fotos Durante</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-700">{getProcessReportImagesByPhase('depois').length}</div>
+                        <div className="text-sm text-green-600">Fotos Depois</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-700">{processReportData.processImages.length}</div>
+                        <div className="text-sm text-green-600">Total de Fotos</div>
+                      </div>
+                    </div>
+                    
+                    {processReportData.workName && (
+                      <div className="mb-4">
+                        <p className="text-sm text-green-800">
+                          <strong>Obra:</strong> {processReportData.workName}
+                        </p>
+                        <p className="text-sm text-green-800">
+                          <strong>Data:</strong> {new Date(processReportData.workDate).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <p className="text-sm text-green-600 mb-4">
+                      Este relatório será gerado com foco exclusivo no processo da obra, organizando as fotos por fases
+                    </p>
+
+                    <Button
+                      onClick={generateProcessReportPDF}
+                      disabled={loading || processReportData.processImages.length === 0 || !processReportData.workName.trim()}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      size="lg"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      {loading ? 'Gerando Relatório...' : 'Gerar Relatório de Processo PDF'}
+                    </Button>
+
+                    {message && (
+                      <Alert className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{message}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="premiere" className="space-y-6 mt-6">
@@ -1917,6 +2662,17 @@ export default function AdminDashboard() {
                           className="rounded"
                         />
                         <Label htmlFor="premiere-includeFinalConsiderations" className="text-sm">Considerações Finais</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="premiere-includeProcessImages"
+                          checked={premiereData.config.includeProcessImages}
+                          onChange={(e) => updatePremiereConfig('includeProcessImages', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="premiere-includeProcessImages" className="text-sm">Processo da Obra (Antes/Durante/Depois)</Label>
                       </div>
                     </div>
                     
@@ -2357,6 +3113,17 @@ export default function AdminDashboard() {
                           className="rounded"
                         />
                         <Label htmlFor="mark1-includeFinalConsiderations" className="text-sm">Considerações Finais</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="mark1-includeProcessImages"
+                          checked={mark1Data.config.includeProcessImages}
+                          onChange={(e) => updateMark1Config('includeProcessImages', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="mark1-includeProcessImages" className="text-sm">Processo da Obra (Antes/Durante/Depois)</Label>
                       </div>
                     </div>
                     
@@ -2865,4 +3632,4 @@ export default function AdminDashboard() {
       </main>
     </div>
   );
-} 
+}

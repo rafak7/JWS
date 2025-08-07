@@ -103,7 +103,8 @@ export async function POST(request: NextRequest) {
       includeResultImage: true,
       includePhotographicReport: true,
       includeHeaderFooter: true,
-      includeFinalConsiderations: true
+      includeFinalConsiderations: true,
+      includeProcessImages: true
     };
     try {
       const configData = formData.get('config');
@@ -138,6 +139,30 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('Total de imagens processadas:', images.length);
+
+    // Processar imagens do processo da obra (antes/durante/depois)
+    console.log('Processando imagens do processo da obra...');
+    const processImages: any[] = [];
+    
+    for (const [key, value] of formDataEntries) {
+      if (key.startsWith('processImage_') && !key.includes('_serviceId') && !key.includes('_comment') && !key.includes('_phase') && value && typeof value === 'object' && 'arrayBuffer' in value) {
+        const imageIndex = key.replace('processImage_', '');
+        const serviceId = formData.get(`processImage_${imageIndex}_serviceId`) as string;
+        const comment = formData.get(`processImage_${imageIndex}_comment`) as string || '';
+        const phase = formData.get(`processImage_${imageIndex}_phase`) as string;
+        const service = servicesData.find((s: any) => s.id === serviceId);
+        
+        processImages.push({
+          file: value,
+          serviceId: serviceId,
+          serviceName: service?.name || 'Serviço',
+          comment: comment,
+          phase: phase
+        });
+      }
+    }
+    
+    console.log('Total de imagens do processo processadas:', processImages.length);
 
     // Processar imagem de resultado separada
     const resultImage = formData.get('resultImage');
@@ -535,6 +560,96 @@ export async function POST(request: NextRequest) {
               imageCounter++;
             }
           }
+          
+          // Processar imagens do processo da obra para este serviço (se habilitado)
+          if (config.includeProcessImages) {
+            const serviceProcessImages = processImages.filter(img => img.serviceId === service.id);
+            
+            if (serviceProcessImages.length > 0) {
+              console.log(`Processando ${serviceProcessImages.length} imagens do processo da obra para o serviço ${service.name}`);
+              
+              // Organizar por fase
+               const phases = ['antes', 'durante', 'depois'] as const;
+               const phaseLabels: Record<string, string> = {
+                 'antes': 'ANTES',
+                 'durante': 'DURANTE', 
+                 'depois': 'DEPOIS'
+               };
+              
+              for (const phase of phases) {
+                const phaseImages = serviceProcessImages.filter(img => img.phase === phase);
+                
+                if (phaseImages.length > 0) {
+                  // Nova página para cada fase
+                  pdf.addPage();
+                  if (config.includeHeaderFooter) {
+                    addHeader();
+                    yPosition = margin + simpleHeaderHeight + 20;
+                  } else {
+                    yPosition = margin + 20;
+                  }
+                  
+                  // Título da fase
+                  addCenteredText(`${service.name} – Processo da Obra: ${phaseLabels[phase]}`, 14, true);
+                  yPosition += 20;
+                  
+                  // Processar cada imagem da fase
+                  for (let i = 0; i < phaseImages.length; i++) {
+                    const processImageData = phaseImages[i];
+                    try {
+                      console.log(`Processando imagem ${phase} ${i + 1} de ${phaseImages.length} do serviço ${service.name}`);
+                      const base64 = await imageToBase64(processImageData.file);
+                      
+                      // Nova página para cada imagem do processo
+                      if (i > 0) {
+                        pdf.addPage();
+                        if (config.includeHeaderFooter) {
+                          addHeader();
+                        }
+                      }
+                      
+                      // Centralizar verticalmente na página
+                      const imgWidth = 150;
+                      const imgHeight = 120;
+                      const titleHeight = 20;
+                      const totalContentHeight = titleHeight + imgHeight;
+                      
+                      let availableHeight, startY;
+                      if (config.includeHeaderFooter) {
+                        availableHeight = pageHeight - simpleHeaderHeight - footerHeight - (2 * margin);
+                        startY = margin + simpleHeaderHeight + (availableHeight - totalContentHeight) / 2;
+                      } else {
+                        availableHeight = pageHeight - (2 * margin);
+                        startY = margin + (availableHeight - totalContentHeight) / 2;
+                      }
+                      
+                      // Resetar posição Y para centralizar
+                      yPosition = startY;
+                      
+                      // Adicionar título da imagem centralizado
+                      addCenteredText(`${service.name} – ${phaseLabels[phase]} ${i + 1}`, 12, true);
+                      yPosition += 10;
+                      
+                      // Adicionar imagem centralizada horizontal e verticalmente
+                      const imgX = (pageWidth - imgWidth) / 2;
+                      
+                      pdf.addImage(base64, 'JPEG', imgX, yPosition, imgWidth, imgHeight);
+                      yPosition += imgHeight + 10;
+                      
+                      // Adicionar comentário da imagem se existir
+                      if (config.includeImageComments && processImageData.comment && processImageData.comment.trim()) {
+                        addCenteredText(processImageData.comment, 10);
+                      }
+                      
+                    } catch (error) {
+                      console.error(`Erro ao processar imagem ${phase} ${i + 1} do serviço ${service.name}:`, error);
+                      // Continuar com as próximas imagens mesmo se uma falhar
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -646,4 +761,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
