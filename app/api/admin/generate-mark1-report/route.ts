@@ -272,19 +272,66 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(51, 51, 51);
       const mainTitle = 'Relatório Diário de Obras';
-      const mainTitleWidth = pdf.getTextWidth(mainTitle);
-      pdf.text(mainTitle, (pageWidth - mainTitleWidth) / 2, 70);
+      
+      // Função para quebrar texto em múltiplas linhas
+      const wrapText = (text: string, maxWidth: number) => {
+        const words = text.split(' ');
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = pdf.getTextWidth(testLine);
+          
+          if (testWidth <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              // Palavra muito longa, adiciona mesmo assim
+              lines.push(word);
+              currentLine = '';
+            }
+          }
+        }
+        
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        
+        return lines;
+      };
+      
+      // Quebrar o título se necessário (largura máxima: 70% da página)
+      const maxTitleWidth = pageWidth * 0.7;
+      const titleLines = wrapText(mainTitle, maxTitleWidth);
+      
+      // Renderizar o título (centralizado)
+      let titleYPos = 70;
+      const lineHeight = 28; // Espaçamento entre linhas
+      
+      titleLines.forEach((line, index) => {
+        const lineWidth = pdf.getTextWidth(line);
+        const xPos = (pageWidth - lineWidth) / 2;
+        pdf.text(line, xPos, titleYPos + (index * lineHeight));
+      });
+      
+      // Ajustar posição da linha separadora baseada no número de linhas do título
+      const separatorYPos = titleYPos + ((titleLines.length - 1) * lineHeight) + 15;
       
       // Linha separadora roxa
       pdf.setLineWidth(3);
       pdf.setDrawColor(128, 0, 128); // Roxo
-      pdf.line(50, 85, pageWidth - 50, 85);
+      pdf.line(50, separatorYPos, pageWidth - 50, separatorYPos);
       
       // Informações do relatório organizadas
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
       
-      let yPos = 110;
+      let yPos = separatorYPos + 25;
       
       // Empresa/Cliente
       pdf.setFont('helvetica', 'bold');
@@ -483,29 +530,32 @@ export async function POST(req: Request) {
           
           // Legenda da foto
           pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(0, 0, 0); // Preto para legendas
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(0, 0, 0); // Preto para todas as legendas
           const photoNum = startIndex + i + 1;
           const legendY = centeredY + photoHeight + 8;
           
-          // Adicionar número da foto
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(`Foto ${photoNum}`, centeredX + padding, legendY);
+          // Centralizar número da foto
+          const photoLabel = `Foto ${photoNum}`;
+          const photoLabelWidth = pdf.getTextWidth(photoLabel);
+          const photoLabelX = centeredX + (photoWidth - photoLabelWidth) / 2;
+          pdf.text(photoLabel, photoLabelX, legendY);
           
-          // Adicionar comentário da foto se existir
+          // Adicionar comentário da foto se existir (centralizado abaixo)
           if (photo.comment) {
             pdf.setFont('helvetica', 'normal');
-            const commentX = centeredX + padding + pdf.getTextWidth(`Foto ${photoNum}: `);
+            pdf.setTextColor(0, 0, 0); // Manter preto para comentários
             
-            // Limitar o tamanho do comentário para caber na largura da foto
-            const maxWidth = photoWidth - 2 * padding - pdf.getTextWidth(`Foto ${photoNum}: `);
-            let comment = photo.comment;
+            // Quebrar o comentário em múltiplas linhas se necessário
+            const maxCommentWidth = photoWidth - 2 * padding;
+            const commentLines = pdf.splitTextToSize(photo.comment, maxCommentWidth);
             
-            if (pdf.getTextWidth(comment) > maxWidth) {
-              comment = comment.substring(0, 20) + '...';
-            }
-            
-            pdf.text(comment, commentX, legendY);
+            // Centralizar cada linha do comentário
+            commentLines.forEach((line: string, lineIndex: number) => {
+              const lineWidth = pdf.getTextWidth(line);
+              const lineX = centeredX + (photoWidth - lineWidth) / 2;
+              pdf.text(line, lineX, legendY + 12 + (lineIndex * 10));
+            });
           }
         } catch (error) {
           console.error(`Erro ao adicionar imagem ${startIndex + i + 1}:`, error);
