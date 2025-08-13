@@ -180,6 +180,11 @@ export default function AdminDashboard() {
   const [premiereReportName, setPremiereReportName] = useState('Relatório de Obra');
   const [premiereReportDescription, setPremiereReportDescription] = useState('');
   const [mark1Location, setMark1Location] = useState('Local da Obra');
+  const [mark1Company, setMark1Company] = useState('Cliente/Wish S/A Marupiara');
+  const [mark1Address, setMark1Address] = useState('Rua Marupiara S/N');
+  const [mark1Date, setMark1Date] = useState(new Date().toISOString().split('T')[0]);
+  const [mark1StartTime, setMark1StartTime] = useState('08:00');
+  const [mark1EndTime, setMark1EndTime] = useState('17:00');
   const [processReportData, setProcessReportData] = useState<ProcessReportData>({
     workName: '',
     workDate: new Date().toISOString().split('T')[0],
@@ -1175,6 +1180,11 @@ export default function AdminDashboard() {
       formData.append('config', JSON.stringify(mark1Data.config));
       formData.append('finalConsiderations', mark1Data.finalConsiderations);
       formData.append('location', mark1Location);
+      formData.append('company', mark1Company);
+      formData.append('address', mark1Address);
+      formData.append('date', mark1Date);
+      formData.append('startTime', mark1StartTime);
+      formData.append('endTime', mark1EndTime);
 
       console.log('FormData base criado');
 
@@ -3289,16 +3299,67 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Local da Obra Mark1 */}
+                  {/* Informações do Relatório Mark1 */}
                   <div className="space-y-4">
-                    <Label className="text-lg font-semibold">Local da Obra</Label>
-                    <Input
-                      placeholder="Ex: Empresa XYZ, Prédio Comercial ABC, etc."
-                      value={mark1Location}
-                      onChange={(e) => setMark1Location(e.target.value)}
-                    />
+                    <Label className="text-lg font-semibold">Informações do Relatório</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-company">Empresa</Label>
+                        <Input
+                          id="mark1-company"
+                          placeholder="Ex: Cliente/Wish S/A Marupiara"
+                          value={mark1Company}
+                          onChange={(e) => setMark1Company(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-address">Endereço</Label>
+                        <Input
+                          id="mark1-address"
+                          placeholder="Ex: Rua Marupiara S/N"
+                          value={mark1Address}
+                          onChange={(e) => setMark1Address(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-date">Data</Label>
+                        <Input
+                          id="mark1-date"
+                          type="date"
+                          value={mark1Date}
+                          onChange={(e) => setMark1Date(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-location">Local da Obra</Label>
+                        <Input
+                          id="mark1-location"
+                          placeholder="Ex: Resort Marupiara"
+                          value={mark1Location}
+                          onChange={(e) => setMark1Location(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-start-time">Horário de Início</Label>
+                        <Input
+                          id="mark1-start-time"
+                          type="time"
+                          value={mark1StartTime}
+                          onChange={(e) => setMark1StartTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mark1-end-time">Horário de Término</Label>
+                        <Input
+                          id="mark1-end-time"
+                          type="time"
+                          value={mark1EndTime}
+                          onChange={(e) => setMark1EndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
                     <p className="text-sm text-gray-600">
-                      Este nome aparecerá na página de título do Diário de Obra
+                      Estas informações aparecerão na página de título do Diário de Obra
                     </p>
                   </div>
 

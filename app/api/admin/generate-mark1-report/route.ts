@@ -91,10 +91,15 @@ async function imageToBase64(file: any): Promise<string> {
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const services = JSON.parse(formData.get('services') as string);
-    const config = JSON.parse(formData.get('config') as string);
-    const finalConsiderations = formData.get('finalConsiderations') as string;
-    const location = formData.get('location') as string;
+    const services = JSON.parse(formData.get('services') as string || '[]');
+    const config = JSON.parse(formData.get('config') as string || '{}');
+    const finalConsiderations = formData.get('finalConsiderations') as string || '';
+    const location = formData.get('location') as string || 'Local da Obra';
+    const company = formData.get('company') as string || 'Cliente/Wish S/A Marupiara';
+    const address = formData.get('address') as string || 'Rua Marupiara S/N';
+    const date = formData.get('date') as string || new Date().toISOString().split('T')[0];
+    const startTime = formData.get('startTime') as string || '08:00';
+    const endTime = formData.get('endTime') as string || '17:00';
     
     console.log('Iniciando geração do relatório Mark1');
     console.log(`Serviços recebidos: ${services.length}`);
@@ -223,68 +228,174 @@ export async function POST(req: Request) {
     };
 
     // Função para criar página de título do diário
-    const addTitlePage = (dateRange: string, location: string) => {
+    const addTitlePage = (dateRange: string, location: string, company: string, address: string, date: string, startTime: string, endTime: string) => {
       pdf.addPage();
       
-      // Criar fundo degradê do branco ao azul escuro
-      createWhiteToNavyGradient();
+      // Fundo branco limpo
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Título principal "Diário de Obra" centralizado e maior
-      pdf.setFontSize(36);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Preto para melhor legibilidade
-      const mainTitle = 'Diário de Obra';
-      const mainTitleWidth = pdf.getTextWidth(mainTitle);
-      pdf.text(mainTitle, (pageWidth - mainTitleWidth) / 2, pageHeight / 3);
-
-      // Período
-      pdf.setFontSize(24);
+      // Header azul com informações da empresa
+      pdf.setFillColor(41, 128, 185);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Logo da Mark1 no header
+      if (mark1Logo) {
+        const logoSize = 25;
+        const logoX = 15;
+        const logoY = 7.5;
+        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
+      }
+      
+      // Informações da empresa no header
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const periodWidth = pdf.getTextWidth(dateRange);
-      pdf.text(dateRange, (pageWidth - periodWidth) / 2, pageHeight / 2);
-
-      // Local
-      pdf.setFontSize(20);
-      const locationText = `Local: ${location}`;
-      const locationWidth = pdf.getTextWidth(locationText);
-      pdf.text(locationText, (pageWidth - locationWidth) / 2, (pageHeight / 2) + 20);
-
+      pdf.setTextColor(255, 255, 255);
+      
+      // Linha superior com e-mail e telefones
+      pdf.text('administrativo@mark1hvac.com', 50, 12);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      
+      // Linha inferior com website e CNPJ
+      pdf.text('https://www.mark1hvac.com', 50, 20);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
+      
+      // Nome da empresa centralizado
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      const companyNameWidth = pdf.getTextWidth(companyName);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
+      
+      // Título principal do relatório
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(51, 51, 51);
+      const mainTitle = 'Relatório Diário de Obras';
+      const mainTitleWidth = pdf.getTextWidth(mainTitle);
+      pdf.text(mainTitle, (pageWidth - mainTitleWidth) / 2, 70);
+      
+      // Linha separadora roxa
+      pdf.setLineWidth(3);
+      pdf.setDrawColor(128, 0, 128); // Roxo
+      pdf.line(50, 85, pageWidth - 50, 85);
+      
+      // Informações do relatório organizadas
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+      
+      let yPos = 110;
+      
+      // Empresa/Cliente
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Empresa / Cliente:', 50, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(company, 50, yPos + 8);
+      yPos += 22;
+      
+      // Endereço
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Endereço:', 50, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(address, 50, yPos + 8);
+      yPos += 22;
+      
+      // Data
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Data:', 50, yPos);
+      pdf.setFont('helvetica', 'normal');
+      const formattedDate = new Date(date).toLocaleDateString('pt-BR');
+      pdf.text(formattedDate, 50, yPos + 8);
+      yPos += 22;
+      
+      // Horários
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Horário de Início:', 50, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(startTime, 50, yPos + 8);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Horário de Término:', 200, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(endTime, 200, yPos + 8);
+      yPos += 22;
+      
+      // Local da Obra
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Local da Obra:', 50, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(location, 50, yPos + 8);
+      
       // Reset de estilos
       pdf.setDrawColor(0, 0, 0);
       pdf.setLineWidth(0.2);
+      pdf.setTextColor(0, 0, 0);
     };
 
     // Função para adicionar 2 fotos por página
     const add2PhotosPage = async (photos: any[], startIndex: number) => {
       pdf.addPage();
       
-      // Criar fundo degradê do branco ao azul escuro
-      createWhiteToNavyGradient();
+      // Fundo branco limpo
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      
+      // Header azul com informações da empresa (mesmo padrão)
+      pdf.setFillColor(41, 128, 185);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Logo da Mark1 no header
+      if (mark1Logo) {
+        const logoSize = 25;
+        const logoX = 15;
+        const logoY = 7.5;
+        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
+      }
+      
+      // Informações da empresa no header
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(255, 255, 255);
+      
+      // Linha superior com e-mail e telefones
+      pdf.text('administrativo@mark1hvac.com', 50, 12);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      
+      // Linha inferior com website e CNPJ
+      pdf.text('https://www.mark1hvac.com', 50, 20);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
+      
+      // Nome da empresa centralizado
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      const companyNameWidth = pdf.getTextWidth(companyName);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
       // Título da página de fotos
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Preto para o título
+      pdf.setTextColor(51, 51, 51);
       const pageTitle = 'Registro Fotográfico';
       const titleWidth = pdf.getTextWidth(pageTitle);
-      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 20);
+      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
 
-      // Linha decorativa abaixo do título
-      pdf.setDrawColor(0, 0, 128);
-      pdf.setLineWidth(0.5);
-      pdf.line((pageWidth - titleWidth - 20) / 2, 25, (pageWidth + titleWidth + 20) / 2, 25);
+      // Linha separadora roxa
+      pdf.setLineWidth(2);
+      pdf.setDrawColor(128, 0, 128);
+      pdf.line(50, 70, pageWidth - 50, 70);
       
       // Margens otimizadas para orientação horizontal
-      const margin = 25; // Aumentado para dar mais respiro
-      const spacing = 20; // Aumentado para maior separação entre fotos
-      const padding = 10; // Padding interno das fotos
+      const margin = 20;
+      const spacing = 15;
+      const padding = 8;
       
-      // Calcular posições para 2 fotos lado a lado
+      // Calcular posições para 2 fotos lado a lado (ajustado para o novo header)
       const availableWidth = pageWidth - 2 * margin - spacing;
-      const availableHeight = pageHeight - 2 * margin - 40; // 40 para título e legenda
+      const availableHeight = pageHeight - 2 * margin - 60; // 60 para header e título
       
-      const photoWidth = availableWidth / 2;
-      const photoHeight = Math.min(availableHeight, photoWidth * 0.75); // Manter proporção sem distorção
+      const maxPhotoWidth = availableWidth / 2;
+      const maxPhotoHeight = availableHeight - 20; // Espaço para legenda
       
       // Verificar se temos imagens para processar
       if (startIndex >= photos.length) {
@@ -301,36 +412,71 @@ export async function POST(req: Request) {
           continue;
         }
         
+        // Calcular dimensões mantendo proporção (usando proporção otimizada)
+        let photoWidth = maxPhotoWidth;
+        let photoHeight = maxPhotoHeight;
+        
+        // Usar proporção 3:2 para melhor aproveitamento do espaço
+        const aspectRatio = 3/2;
+        
+        if (maxPhotoWidth / maxPhotoHeight > aspectRatio) {
+          // Espaço disponível é mais largo que 3:2, limitar pela altura
+          photoHeight = maxPhotoHeight;
+          photoWidth = photoHeight * aspectRatio;
+        } else {
+          // Espaço disponível é mais alto que 3:2, limitar pela largura
+          photoWidth = maxPhotoWidth;
+          photoHeight = photoWidth / aspectRatio;
+        }
+        
+        // Garantir tamanho mínimo para boa visualização
+        const minWidth = 120;
+        const minHeight = 80;
+        
+        if (photoWidth < minWidth) {
+          photoWidth = minWidth;
+          photoHeight = photoWidth / aspectRatio;
+        }
+        
+        if (photoHeight < minHeight) {
+          photoHeight = minHeight;
+          photoWidth = photoHeight * aspectRatio;
+        }
+        
         // Calcular posição da foto (2 lado a lado)
-        const x = margin + i * (photoWidth + spacing);
-        const y = 40; // Começar abaixo do título
+        const x = margin + i * (maxPhotoWidth + spacing);
+        const y = 85; // Começar abaixo do header e título
+        
+        // Centralizar a foto no espaço disponível
+        const centeredX = x + (maxPhotoWidth - photoWidth) / 2;
+        const centeredY = y + (maxPhotoHeight - photoHeight) / 2;
         
         try {
           console.log(`Adicionando imagem ${startIndex + i + 1} ao PDF`);
           
           // Adicionar sombra suave
           pdf.setFillColor(220, 220, 220);
-          pdf.roundedRect(x + 2, y + 2, photoWidth, photoHeight, 3, 3, 'F');
+          pdf.roundedRect(centeredX + 2, centeredY + 2, photoWidth, photoHeight, 3, 3, 'F');
           
           // Adicionar borda branca
           pdf.setFillColor(255, 255, 255);
           pdf.setDrawColor(240, 240, 240);
           pdf.setLineWidth(0.5);
-          pdf.roundedRect(x, y, photoWidth, photoHeight, 3, 3, 'FD');
+          pdf.roundedRect(centeredX, centeredY, photoWidth, photoHeight, 3, 3, 'FD');
           
           // Adicionar borda azul fina
           pdf.setDrawColor(0, 0, 128);
           pdf.setLineWidth(0.2);
-          pdf.roundedRect(x + 1, y + 1, photoWidth - 2, photoHeight - 2, 2, 2, 'S');
+          pdf.roundedRect(centeredX + 1, centeredY + 1, photoWidth - 2, photoHeight - 2, 2, 2, 'S');
           
           // Adicionar a foto com margens internas
           pdf.addImage(
             photo.image, // Já é base64
             'JPEG',
-            x + padding,
-            y + padding,
+            centeredX + padding,
+            centeredY + padding,
             photoWidth - 2 * padding,
-            photoHeight - 2 * padding - 20, // Espaço para legenda
+            photoHeight - 2 * padding,
             `img-${startIndex + i}`,
             'MEDIUM' // Qualidade média para melhor visualização
           );
@@ -340,16 +486,16 @@ export async function POST(req: Request) {
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(0, 0, 0); // Preto para legendas
           const photoNum = startIndex + i + 1;
-          const legendY = y + photoHeight - 12;
+          const legendY = centeredY + photoHeight + 8;
           
           // Adicionar número da foto
           pdf.setFont('helvetica', 'bold');
-          pdf.text(`Foto ${photoNum}`, x + padding, legendY);
+          pdf.text(`Foto ${photoNum}`, centeredX + padding, legendY);
           
           // Adicionar comentário da foto se existir
           if (photo.comment) {
             pdf.setFont('helvetica', 'normal');
-            const commentX = x + padding + pdf.getTextWidth(`Foto ${photoNum}: `);
+            const commentX = centeredX + padding + pdf.getTextWidth(`Foto ${photoNum}: `);
             
             // Limitar o tamanho do comentário para caber na largura da foto
             const maxWidth = photoWidth - 2 * padding - pdf.getTextWidth(`Foto ${photoNum}: `);
@@ -366,11 +512,11 @@ export async function POST(req: Request) {
           
           // Adicionar placeholder em caso de erro
           pdf.setFillColor(240, 240, 240);
-          pdf.rect(x + padding, y + padding, photoWidth - 2 * padding, photoHeight - 2 * padding - 20, 'F');
+          pdf.rect(centeredX + padding, centeredY + padding, photoWidth - 2 * padding, photoHeight - 2 * padding, 'F');
           
           pdf.setFontSize(12);
           pdf.setTextColor(100, 100, 100);
-          pdf.text('Erro ao carregar imagem', x + photoWidth / 2 - 40, y + photoHeight / 2);
+          pdf.text('Erro ao carregar imagem', centeredX + photoWidth / 2 - 40, centeredY + photoHeight / 2);
         }
       }
       
@@ -389,35 +535,68 @@ export async function POST(req: Request) {
     const addFlowchartsPage = async (flowcharts: any[], startIndex: number, flowchartsPerPage: number = 1) => {
       pdf.addPage();
       
-      // Criar fundo degradê do branco ao azul escuro
-      createWhiteToNavyGradient();
+      // Fundo branco limpo
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      
+      // Header azul com informações da empresa (mesmo padrão)
+      pdf.setFillColor(41, 128, 185);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Logo da Mark1 no header
+      if (mark1Logo) {
+        const logoSize = 25;
+        const logoX = 15;
+        const logoY = 7.5;
+        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
+      }
+      
+      // Informações da empresa no header
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(255, 255, 255);
+      
+      // Linha superior com e-mail e telefones
+      pdf.text('administrativo@mark1hvac.com', 50, 12);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      
+      // Linha inferior com website e CNPJ
+      pdf.text('https://www.mark1hvac.com', 50, 20);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
+      
+      // Nome da empresa centralizado
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      const companyNameWidth = pdf.getTextWidth(companyName);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
       // Título da página
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Preto para o título
+      pdf.setTextColor(51, 51, 51);
       const pageTitle = 'Fluxogramas';
       const titleWidth = pdf.getTextWidth(pageTitle);
-      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 20);
+      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
 
-      // Linha decorativa abaixo do título
-      pdf.setDrawColor(0, 0, 128);
-      pdf.setLineWidth(0.5);
-      pdf.line((pageWidth - titleWidth - 20) / 2, 25, (pageWidth + titleWidth + 20) / 2, 25);
+      // Linha separadora roxa
+      pdf.setLineWidth(2);
+      pdf.setDrawColor(128, 0, 128);
+      pdf.line(50, 70, pageWidth - 50, 70);
       
       // Margens otimizadas para ocupar a maior parte da página
       const margin = 15;
       
-      // Calcular posições para 1 fluxograma por página (ocupando quase toda a página)
+      // Calcular posições para 1 fluxograma por página (ajustado para o novo header)
       const availableWidth = pageWidth - 2 * margin;
-      const availableHeight = pageHeight - 2 * margin - 40; // 40 para título e legenda
+      const availableHeight = pageHeight - 2 * margin - 80; // 80 para header e título
       
       // Apenas um fluxograma por página
       if (startIndex < flowcharts.length) {
         const flowchart = flowcharts[startIndex];
         
         // Posição do fluxograma centralizado na página
-        const y = 40; // Começar logo abaixo do título
+        const y = 85; // Começar abaixo do header e título
         
         try {
           // Adicionar borda e sombra para o fluxograma
@@ -495,12 +674,148 @@ export async function POST(req: Request) {
       dateRange = `${formatDate(today)} a ${formatDate(tomorrow)}`;
     }
 
+    // Função para adicionar página de conteúdo com atividades
+    const addContentPage = (services: any[], serviceImages: any[]) => {
+      pdf.addPage();
+      
+      // Fundo branco limpo
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      
+      // Header azul com informações da empresa (mesmo padrão)
+      pdf.setFillColor(41, 128, 185);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Logo da Mark1 no header
+      if (mark1Logo) {
+        const logoSize = 25;
+        const logoX = 15;
+        const logoY = 7.5;
+        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
+      }
+      
+      // Informações da empresa no header
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(255, 255, 255);
+      
+      // Linha superior com e-mail e telefones
+      pdf.text('administrativo@mark1hvac.com', 50, 12);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      
+      // Linha inferior com website e CNPJ
+      pdf.text('https://www.mark1hvac.com', 50, 20);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
+      
+      // Nome da empresa centralizado
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      const companyNameWidth = pdf.getTextWidth(companyName);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
+      
+      // Título da seção
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(51, 51, 51);
+      const sectionTitle = 'Relatório Diário de Obras';
+      const sectionTitleWidth = pdf.getTextWidth(sectionTitle);
+      pdf.text(sectionTitle, (pageWidth - sectionTitleWidth) / 2, 65);
+      
+      // Linha separadora roxa
+      pdf.setLineWidth(2);
+      pdf.setDrawColor(128, 0, 128);
+      pdf.line(50, 75, pageWidth - 50, 75);
+      
+      // Informações básicas do relatório
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+      
+      let yPos = 95;
+      
+      // Empresa / Cliente
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Empresa / Cliente: ${company}`, 50, yPos);
+      yPos += 10;
+      
+      // Endereço
+      pdf.text(`Endereço: ${address}`, 50, yPos);
+      yPos += 10;
+      
+      // Data
+      const formattedDate = new Date(date).toLocaleDateString('pt-BR');
+      pdf.text(`Data: ${formattedDate}`, 50, yPos);
+      yPos += 10;
+      
+      // Horários
+      pdf.text(`Horário de Início: ${startTime}`, 50, yPos);
+      pdf.text(`Horário de Término: ${endTime}`, 200, yPos);
+      yPos += 20;
+      
+      // Seção de atividades
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(41, 128, 185);
+      pdf.text('1. Início das atividades da implementação das áreas de alimentos', 50, yPos);
+      pdf.text('   refrigerados e Congelados período de 21/07/2025 a 25/07/2025.', 50, yPos + 8);
+      yPos += 25;
+      
+      pdf.text('2. Descrição das atividades Diárias:', 50, yPos);
+      yPos += 15;
+      
+      // Data específica das atividades
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`Dia ${formattedDate} Recebimento dos materiais para início das atividades`, 50, yPos);
+      yPos += 15;
+      
+      // Lista de atividades baseada nos serviços
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
+      if (services && services.length > 0) {
+        services.forEach((service: any, index: number) => {
+          if (service.name) {
+            pdf.text(`• ${service.name}`, 70, yPos);
+            yPos += 8;
+            
+            // Verificar se há espaço na página
+            if (yPos > pageHeight - 50) {
+              return; // Parar se não houver espaço
+            }
+          }
+        });
+      } else {
+        // Atividades padrão se não houver serviços específicos
+        const defaultActivities = [
+          'Unid. Condensadores',
+          'Painel Isotérmico',
+          'Finalização das atividades da Civil no local da montagem das câmaras',
+          'Início da montagem das câmaras xxx'
+        ];
+        
+        defaultActivities.forEach((activity) => {
+          pdf.text(`• ${activity}`, 70, yPos);
+          yPos += 12;
+        });
+      }
+      
+      // Reset de estilos
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.2);
+      pdf.setTextColor(0, 0, 0);
+    };
+
     // Criar páginas do diário de obra
     console.log('Criando capa do diário...');
     addCoverPage();
 
     console.log('Criando página de título...');
-    addTitlePage(dateRange, location);
+    addTitlePage(dateRange, location, company, address, date, startTime, endTime);
+    
+    console.log('Criando página de conteúdo...');
+    addContentPage(services, serviceImages);
 
     // Processar imagens por serviço (cada serviço em páginas separadas)
     if (serviceImages.length > 0) {
@@ -551,4 +866,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}
