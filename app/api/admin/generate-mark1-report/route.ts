@@ -592,15 +592,7 @@ export async function POST(req: Request) {
         }
       }
       
-      // Nome do serviço no rodapé
-      if (photos[startIndex] && photos[startIndex].serviceName) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0); // Preto para o rodapé
-        const serviceName = `Serviço: ${photos[startIndex].serviceName}`;
-        const serviceWidth = pdf.getTextWidth(serviceName);
-        pdf.text(serviceName, (pageWidth - serviceWidth) / 2, pageHeight - 10);
-      }
+      // Nome do serviço removido do rodapé (agora está acima das fotos)
     };
 
     // Função para adicionar página de fluxogramas
