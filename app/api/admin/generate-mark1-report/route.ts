@@ -435,23 +435,36 @@ export async function POST(req: Request) {
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 70, pageWidth - 50, 70);
       
-      // Adicionar observações do serviço se existirem
+      // Adicionar nome do serviço e observações como cabeçalho acima das fotos
       let yOffset = 0;
-      if (photos[startIndex] && photos[startIndex].serviceObservations) {
-        pdf.setFontSize(12);
+      if (photos[startIndex] && photos[startIndex].serviceName) {
+        // Nome do serviço como título principal
+        pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(0, 0, 0);
-        pdf.text('Descrição do Serviço:', 50, 85);
+        pdf.text(`Serviço: ${photos[startIndex].serviceName}`, 50, 85);
         
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(11);
-        const observationsLines = pdf.splitTextToSize(photos[startIndex].serviceObservations, pageWidth - 100);
+        let currentY = 105;
         
-        observationsLines.forEach((line: string, index: number) => {
-          pdf.text(line, 50, 100 + (index * 12));
-        });
-        
-        yOffset = observationsLines.length * 12 + 20;
+        // Observações do serviço (se existirem)
+        if (photos[startIndex].serviceObservations) {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Descrição:', 50, currentY);
+          
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(11);
+          const observationsLines = pdf.splitTextToSize(photos[startIndex].serviceObservations, pageWidth - 100);
+          
+          currentY += 15;
+          observationsLines.forEach((line: string, index: number) => {
+            pdf.text(line, 50, currentY + (index * 12));
+          });
+          
+          yOffset = (currentY - 85) + (observationsLines.length * 12) + 20;
+        } else {
+          yOffset = 40; // Apenas espaço para o nome do serviço
+        }
       }
       
       // Margens otimizadas para orientação horizontal
