@@ -270,7 +270,7 @@ export async function POST(req: Request) {
       // Título principal do relatório
       pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(51, 51, 51);
+      pdf.setTextColor(0, 0, 0); // Cor preta consistente
       const mainTitle = 'Relatório Diário de Obras';
       
       // Função para quebrar texto em múltiplas linhas
@@ -422,7 +422,7 @@ export async function POST(req: Request) {
       // Título da página de fotos
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(51, 51, 51);
+      pdf.setTextColor(0, 0, 0); // Cor preta consistente
       const pageTitle = 'Registro Fotográfico';
       const titleWidth = pdf.getTextWidth(pageTitle);
       pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
@@ -624,7 +624,7 @@ export async function POST(req: Request) {
       // Título da página
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(51, 51, 51);
+      pdf.setTextColor(0, 0, 0); // Cor preta consistente
       const pageTitle = 'Fluxogramas';
       const titleWidth = pdf.getTextWidth(pageTitle);
       pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
@@ -767,7 +767,7 @@ export async function POST(req: Request) {
       // Título da seção
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(51, 51, 51);
+      pdf.setTextColor(0, 0, 0); // Cor preta consistente
       const sectionTitle = 'Relatório Diário de Obras';
       const sectionTitleWidth = pdf.getTextWidth(sectionTitle);
       pdf.text(sectionTitle, (pageWidth - sectionTitleWidth) / 2, 65);
@@ -802,52 +802,29 @@ export async function POST(req: Request) {
       pdf.text(`Horário de Término: ${endTime}`, 200, yPos);
       yPos += 20;
       
-      // Seção de atividades
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(41, 128, 185);
-      pdf.text('1. Início das atividades da implementação das áreas de alimentos', 50, yPos);
-      pdf.text('   refrigerados e Congelados período de 21/07/2025 a 25/07/2025.', 50, yPos + 8);
-      yPos += 25;
-      
-      pdf.text('2. Descrição das atividades Diárias:', 50, yPos);
-      yPos += 15;
-      
-      // Data específica das atividades
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0);
-      pdf.text(`Dia ${formattedDate} Recebimento dos materiais para início das atividades`, 50, yPos);
-      yPos += 15;
-      
-      // Lista de atividades baseada nos serviços
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      
+      // Seção de atividades - apenas se houver serviços cadastrados
       if (services && services.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0); // Cor preta consistente
+        pdf.text('Descrição das atividades:', 50, yPos);
+        yPos += 20;
+        
+        // Lista de atividades baseada nos serviços
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0); // Cor preta consistente
+        
         services.forEach((service: any, index: number) => {
           if (service.name) {
             pdf.text(`• ${service.name}`, 70, yPos);
-            yPos += 8;
+            yPos += 12;
             
             // Verificar se há espaço na página
             if (yPos > pageHeight - 50) {
               return; // Parar se não houver espaço
             }
           }
-        });
-      } else {
-        // Atividades padrão se não houver serviços específicos
-        const defaultActivities = [
-          'Unid. Condensadores',
-          'Painel Isotérmico',
-          'Finalização das atividades da Civil no local da montagem das câmaras',
-          'Início da montagem das câmaras xxx'
-        ];
-        
-        defaultActivities.forEach((activity) => {
-          pdf.text(`• ${activity}`, 70, yPos);
-          yPos += 12;
         });
       }
       
