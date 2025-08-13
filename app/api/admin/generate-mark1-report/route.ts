@@ -435,14 +435,17 @@ export async function POST(req: Request) {
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 70, pageWidth - 50, 70);
       
-      // Adicionar nome do serviço e observações como cabeçalho acima das fotos
+      // Adicionar nome do serviço e observações como cabeçalho centralizado acima das fotos
       let yOffset = 0;
       if (photos[startIndex] && photos[startIndex].serviceName) {
-        // Nome do serviço como título principal
+        // Nome do serviço como título principal centralizado
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(0, 0, 0);
-        pdf.text(`Serviço: ${photos[startIndex].serviceName}`, 50, 85);
+        const serviceTitle = `Serviço: ${photos[startIndex].serviceName}`;
+        const serviceTitleWidth = pdf.getTextWidth(serviceTitle);
+        const serviceTitleX = (pageWidth - serviceTitleWidth) / 2;
+        pdf.text(serviceTitle, serviceTitleX, 85);
         
         let currentY = 105;
         
@@ -450,7 +453,10 @@ export async function POST(req: Request) {
         if (photos[startIndex].serviceObservations) {
           pdf.setFontSize(12);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Descrição:', 50, currentY);
+          const descTitle = 'Descrição:';
+          const descTitleWidth = pdf.getTextWidth(descTitle);
+          const descTitleX = (pageWidth - descTitleWidth) / 2;
+          pdf.text(descTitle, descTitleX, currentY);
           
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(11);
@@ -458,7 +464,9 @@ export async function POST(req: Request) {
           
           currentY += 15;
           observationsLines.forEach((line: string, index: number) => {
-            pdf.text(line, 50, currentY + (index * 12));
+            const lineWidth = pdf.getTextWidth(line);
+            const lineX = (pageWidth - lineWidth) / 2;
+            pdf.text(line, lineX, currentY + (index * 12));
           });
           
           yOffset = (currentY - 85) + (observationsLines.length * 12) + 20;
