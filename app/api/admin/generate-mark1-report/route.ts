@@ -94,9 +94,9 @@ export async function POST(req: Request) {
     const services = JSON.parse(formData.get('services') as string || '[]');
     const config = JSON.parse(formData.get('config') as string || '{}');
     const finalConsiderations = formData.get('finalConsiderations') as string || '';
-    const location = formData.get('location') as string || 'Local da Obra';
-    const company = formData.get('company') as string || 'Cliente/Wish S/A Marupiara';
-    const address = formData.get('address') as string || 'Rua Marupiara S/N';
+    const location = formData.get('location') as string || '';
+    const company = formData.get('company') as string || '';
+    const address = formData.get('address') as string || '';
     const date = formData.get('date') as string || new Date().toISOString().split('T')[0];
     const startTime = formData.get('startTime') as string || '08:00';
     const endTime = formData.get('endTime') as string || '17:00';
@@ -126,7 +126,8 @@ export async function POST(req: Request) {
           image: imageBase64,
           serviceName: service.name,
           serviceId: serviceId,
-          comment: comment
+          comment: comment,
+          serviceObservations: service.observations || ''
         });
       }
     }
@@ -252,18 +253,16 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Linha superior com e-mail e telefones
-      pdf.text('administrativo@mark1hvac.com', 50, 12);
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      // Informações da empresa (apenas se fornecidas)
+      if (company) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        const companyNameWidth = pdf.getTextWidth(company);
+        pdf.text(company, (pageWidth - companyNameWidth) / 2, 25);
+      }
       
-      // Linha inferior com website e CNPJ
-      pdf.text('https://www.mark1hvac.com', 50, 20);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
-      
-      // Nome da empresa centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      // Nome da empresa padrão se não houver empresa definida
+      const companyName = company || 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
       pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
@@ -333,19 +332,23 @@ export async function POST(req: Request) {
       
       let yPos = separatorYPos + 25;
       
-      // Empresa/Cliente
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Empresa / Cliente:', 50, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(company, 50, yPos + 8);
-      yPos += 22;
+      // Empresa/Cliente (apenas se preenchido)
+      if (company) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Empresa / Cliente:', 50, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(company, 50, yPos + 8);
+        yPos += 22;
+      }
       
-      // Endereço
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Endereço:', 50, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(address, 50, yPos + 8);
-      yPos += 22;
+      // Endereço (apenas se preenchido)
+      if (address) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Endereço:', 50, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(address, 50, yPos + 8);
+        yPos += 22;
+      }
       
       // Data
       pdf.setFont('helvetica', 'bold');
@@ -367,11 +370,13 @@ export async function POST(req: Request) {
       pdf.text(endTime, 200, yPos + 8);
       yPos += 22;
       
-      // Local da Obra
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Local da Obra:', 50, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(location, 50, yPos + 8);
+      // Local da Obra (apenas se preenchido)
+      if (location) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Local da Obra:', 50, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(location, 50, yPos + 8);
+      }
       
       // Reset de estilos
       pdf.setDrawColor(0, 0, 0);
@@ -404,18 +409,16 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Linha superior com e-mail e telefones
-      pdf.text('administrativo@mark1hvac.com', 50, 12);
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      // Informações da empresa (apenas se fornecidas)
+      if (company) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        const companyNameWidth = pdf.getTextWidth(company);
+        pdf.text(company, (pageWidth - companyNameWidth) / 2, 25);
+      }
       
-      // Linha inferior com website e CNPJ
-      pdf.text('https://www.mark1hvac.com', 50, 20);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
-      
-      // Nome da empresa centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      // Nome da empresa padrão se não houver empresa definida
+      const companyName = company || 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
       pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
@@ -432,14 +435,33 @@ export async function POST(req: Request) {
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 70, pageWidth - 50, 70);
       
+      // Adicionar observações do serviço se existirem
+      let yOffset = 0;
+      if (photos[startIndex] && photos[startIndex].serviceObservations) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Descrição do Serviço:', 50, 85);
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(11);
+        const observationsLines = pdf.splitTextToSize(photos[startIndex].serviceObservations, pageWidth - 100);
+        
+        observationsLines.forEach((line: string, index: number) => {
+          pdf.text(line, 50, 100 + (index * 12));
+        });
+        
+        yOffset = observationsLines.length * 12 + 20;
+      }
+      
       // Margens otimizadas para orientação horizontal
       const margin = 20;
       const spacing = 15;
       const padding = 8;
       
-      // Calcular posições para 2 fotos lado a lado (ajustado para o novo header)
+      // Calcular posições para 2 fotos lado a lado (ajustado para o novo header e observações)
       const availableWidth = pageWidth - 2 * margin - spacing;
-      const availableHeight = pageHeight - 2 * margin - 60; // 60 para header e título
+      const availableHeight = pageHeight - 2 * margin - 60 - yOffset; // 60 para header e título + yOffset para observações
       
       const maxPhotoWidth = availableWidth / 2;
       const maxPhotoHeight = availableHeight - 20; // Espaço para legenda
@@ -492,7 +514,7 @@ export async function POST(req: Request) {
         
         // Calcular posição da foto (2 lado a lado)
         const x = margin + i * (maxPhotoWidth + spacing);
-        const y = 85; // Começar abaixo do header e título
+        const y = 85 + yOffset; // Começar abaixo do header, título e observações
         
         // Centralizar a foto no espaço disponível
         const centeredX = x + (maxPhotoWidth - photoWidth) / 2;
@@ -606,18 +628,16 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Linha superior com e-mail e telefones
-      pdf.text('administrativo@mark1hvac.com', 50, 12);
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      // Informações da empresa (apenas se fornecidas)
+      if (company) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        const companyNameWidth = pdf.getTextWidth(company);
+        pdf.text(company, (pageWidth - companyNameWidth) / 2, 25);
+      }
       
-      // Linha inferior com website e CNPJ
-      pdf.text('https://www.mark1hvac.com', 50, 20);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
-      
-      // Nome da empresa centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      // Nome da empresa padrão se não houver empresa definida
+      const companyName = company || 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
       pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
@@ -749,18 +769,16 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Linha superior com e-mail e telefones
-      pdf.text('administrativo@mark1hvac.com', 50, 12);
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 15, 12, { align: 'right' });
+      // Informações da empresa (apenas se fornecidas)
+      if (company) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        const companyNameWidth = pdf.getTextWidth(company);
+        pdf.text(company, (pageWidth - companyNameWidth) / 2, 25);
+      }
       
-      // Linha inferior com website e CNPJ
-      pdf.text('https://www.mark1hvac.com', 50, 20);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 15, 20, { align: 'right' });
-      
-      // Nome da empresa centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      // Nome da empresa padrão se não houver empresa definida
+      const companyName = company || 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
       pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 32);
       
@@ -783,14 +801,18 @@ export async function POST(req: Request) {
       
       let yPos = 95;
       
-      // Empresa / Cliente
+      // Empresa / Cliente (apenas se preenchido)
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`Empresa / Cliente: ${company}`, 50, yPos);
-      yPos += 10;
+      if (company) {
+        pdf.text(`Empresa / Cliente: ${company}`, 50, yPos);
+        yPos += 10;
+      }
       
-      // Endereço
-      pdf.text(`Endereço: ${address}`, 50, yPos);
-      yPos += 10;
+      // Endereço (apenas se preenchido)
+      if (address) {
+        pdf.text(`Endereço: ${address}`, 50, yPos);
+        yPos += 10;
+      }
       
       // Data
       const formattedDate = new Date(date).toLocaleDateString('pt-BR');
