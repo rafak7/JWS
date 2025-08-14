@@ -253,45 +253,22 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
+      // Email e site no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 15);
+      pdf.text('https://www.mark1hvac.com', 50, 25);
+      
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
       
-      // Informações de contato da Mark1
-      pdf.setFontSize(9);
+      // Informações no lado direito
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      
-      // Primeira linha: Telefone e Email
-      const contactY1 = 28;
-      const contactY2 = 35;
-      const phoneX = 50;
-      const emailX = 150;
-      
-      // Telefone
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', phoneX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 99999-9999', phoneX + 12, contactY1);
-      
-      // Email
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Email:', emailX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('contato@mark1refrigeracao.com.br', emailX + 16, contactY1);
-      
-      // Segunda linha: CNPJ e Site
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', phoneX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('XX.XXX.XXX/0001-XX', phoneX + 16, contactY2);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Site:', emailX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('www.mark1refrigeracao.com.br', emailX + 14, contactY2);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
       
       // Título principal do relatório
       pdf.setFontSize(24);
@@ -436,45 +413,22 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
+      // Email e site no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 15);
+      pdf.text('https://www.mark1hvac.com', 50, 25);
+      
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
       
-      // Informações de contato da Mark1
-      pdf.setFontSize(9);
+      // Informações no lado direito
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      
-      // Primeira linha: Telefone e Email
-      const contactY1 = 28;
-      const contactY2 = 35;
-      const phoneX = 50;
-      const emailX = 150;
-      
-      // Telefone
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', phoneX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 99999-9999', phoneX + 12, contactY1);
-      
-      // Email
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Email:', emailX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('contato@mark1refrigeracao.com.br', emailX + 16, contactY1);
-      
-      // Segunda linha: CNPJ e Site
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', phoneX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('XX.XXX.XXX/0001-XX', phoneX + 16, contactY2);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Site:', emailX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('www.mark1refrigeracao.com.br', emailX + 14, contactY2);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
       
       // Título da página de fotos
       pdf.setFontSize(16);
@@ -722,45 +676,22 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
+      // Email e site no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 15);
+      pdf.text('https://www.mark1hvac.com', 50, 25);
+      
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
       
-      // Informações de contato da Mark1
-      pdf.setFontSize(9);
+      // Informações no lado direito
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      
-      // Primeira linha: Telefone e Email
-      const contactY1 = 28;
-      const contactY2 = 35;
-      const phoneX = 50;
-      const emailX = 150;
-      
-      // Telefone
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', phoneX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 99999-9999', phoneX + 12, contactY1);
-      
-      // Email
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Email:', emailX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('contato@mark1refrigeracao.com.br', emailX + 16, contactY1);
-      
-      // Segunda linha: CNPJ e Site
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', phoneX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('XX.XXX.XXX/0001-XX', phoneX + 16, contactY2);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Site:', emailX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('www.mark1refrigeracao.com.br', emailX + 14, contactY2);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
       
       // Título da página
       pdf.setFontSize(16);
@@ -890,45 +821,22 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
+      // Email e site no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 15);
+      pdf.text('https://www.mark1hvac.com', 50, 25);
+      
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
       
-      // Informações de contato da Mark1
-      pdf.setFontSize(9);
+      // Informações no lado direito
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      
-      // Primeira linha: Telefone e Email
-      const contactY1 = 28;
-      const contactY2 = 35;
-      const phoneX = 50;
-      const emailX = 150;
-      
-      // Telefone
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', phoneX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 99999-9999', phoneX + 12, contactY1);
-      
-      // Email
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Email:', emailX, contactY1);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('contato@mark1refrigeracao.com.br', emailX + 16, contactY1);
-      
-      // Segunda linha: CNPJ e Site
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', phoneX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('XX.XXX.XXX/0001-XX', phoneX + 16, contactY2);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Site:', emailX, contactY2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('www.mark1refrigeracao.com.br', emailX + 14, contactY2);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
       
       // Título da seção
       pdf.setFontSize(18);
