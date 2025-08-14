@@ -482,10 +482,24 @@ export async function POST(req: Request) {
       
       // Calcular posições para 2 fotos lado a lado (ajustado para o novo header e observações)
       const availableWidth = pageWidth - 2 * margin - spacing;
-      const availableHeight = pageHeight - 2 * margin - 60 - yOffset; // 60 para header e título + yOffset para observações
+      
+      // Calcular espaço necessário para legendas e comentários
+      let maxCommentLines = 0;
+      for (let i = 0; i < 2 && startIndex + i < photos.length; i++) {
+        const photo = photos[startIndex + i];
+        if (photo && photo.comment) {
+          const commentLines = pdf.splitTextToSize(photo.comment, (availableWidth / 2) - 2 * padding);
+          maxCommentLines = Math.max(maxCommentLines, commentLines.length);
+        }
+      }
+      
+      // Espaço necessário para legendas: 8 (espaço) + 10 (altura do texto "Foto X") + 12 (espaço) + (linhas do comentário * 10) + 20 (margem inferior)
+      const legendSpace = 8 + 10 + 12 + (maxCommentLines * 10) + 20;
+      
+      const availableHeight = pageHeight - 2 * margin - 60 - yOffset - legendSpace; // 60 para header e título + yOffset para observações + espaço para legendas
       
       const maxPhotoWidth = availableWidth / 2;
-      const maxPhotoHeight = availableHeight - 20; // Espaço para legenda
+      const maxPhotoHeight = availableHeight; // Altura disponível já considera espaço para legendas
       
       // Verificar se temos imagens para processar
       if (startIndex >= photos.length) {
@@ -531,6 +545,19 @@ export async function POST(req: Request) {
         if (photoHeight < minHeight) {
           photoHeight = minHeight;
           photoWidth = photoHeight * aspectRatio;
+        }
+        
+        // Verificar se ainda há espaço suficiente na página para as legendas
+        const photoBottomY = 85 + yOffset + photoHeight;
+        const maxAllowedY = pageHeight - margin - legendSpace;
+        
+        if (photoBottomY > maxAllowedY) {
+          // Reduzir o tamanho da foto para caber na página
+          const availablePhotoHeight = maxAllowedY - (85 + yOffset);
+          if (availablePhotoHeight > minHeight) {
+            photoHeight = availablePhotoHeight;
+            photoWidth = photoHeight * aspectRatio;
+          }
         }
         
         // Calcular posição da foto (2 lado a lado)
