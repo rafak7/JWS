@@ -469,9 +469,9 @@ export async function POST(req: Request) {
             pdf.text(line, lineX, currentY + (index * 12));
           });
           
-          yOffset = (currentY - 85) + (observationsLines.length * 12) + 20;
+          yOffset = 20 + (observationsLines.length * 12);
         } else {
-          yOffset = 40; // Apenas espaço para o nome do serviço
+          yOffset = 20; // Apenas espaço para o nome do serviço
         }
       }
       
