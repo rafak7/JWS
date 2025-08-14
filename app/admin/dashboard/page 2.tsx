@@ -1181,15 +1181,18 @@ export default function AdminDashboard() {
                       <div key={service.id} className="flex items-center">
                         <button
                           onClick={() => setActiveServiceId(service.id)}
-                          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                          className={`px-4 py-2 text-sm font-medium whitespace-nowrap max-w-xs truncate ${
                             activeServiceId === service.id
                               ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700'
                               : 'text-gray-500 hover:text-gray-700'
                           }`}
+                          title={service.name || `Serviço ${index + 1}`}
                         >
-                          Serviço {index + 1}
+                          <span className="truncate">
+                            {service.name || `Serviço ${index + 1}`}
+                          </span>
                           {service.images.length > 0 && (
-                            <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                            <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex-shrink-0">
                               {service.images.length}
                             </span>
                           )}
@@ -1596,15 +1599,18 @@ export default function AdminDashboard() {
                           <div key={service.id} className="flex items-center">
                             <button
                               onClick={() => setActivePremiereServiceId(service.id)}
-                              className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                              className={`px-4 py-2 text-sm font-medium whitespace-nowrap max-w-xs truncate ${
                                 activePremiereServiceId === service.id
                                   ? 'bg-purple-50 text-purple-700 border-b-2 border-purple-700'
                                   : 'text-gray-500 hover:text-gray-700'
                               }`}
+                              title={service.name || `Serviço ${index + 1}`}
                             >
-                              Serviço {index + 1}
+                              <span className="truncate">
+                                {service.name || `Serviço ${index + 1}`}
+                              </span>
                               {service.images.length > 0 && (
-                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full flex-shrink-0">
                                   {service.images.length}
                                 </span>
                               )}
