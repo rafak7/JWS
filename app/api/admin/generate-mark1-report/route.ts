@@ -469,7 +469,7 @@ export async function POST(req: Request) {
             pdf.text(line, lineX, currentY + (index * 12));
           });
           
-          yOffset = 20 + (observationsLines.length * 12);
+          yOffset = (currentY + (observationsLines.length * 12)) - 85 + 20; // Calcular baseado na posição final das observações
         } else {
           yOffset = 20; // Apenas espaço para o nome do serviço
         }
@@ -496,7 +496,7 @@ export async function POST(req: Request) {
       // Espaço necessário para legendas: 8 (espaço) + 10 (altura do texto "Foto X") + 12 (espaço) + (linhas do comentário * 10) + 20 (margem inferior)
       const legendSpace = 8 + 10 + 12 + (maxCommentLines * 10) + 20;
       
-      const availableHeight = pageHeight - 2 * margin - 60 - yOffset - legendSpace; // 60 para header e título + yOffset para observações + espaço para legendas
+      const availableHeight = pageHeight - 2 * margin - 60 - legendSpace; // 60 para header e título + espaço para legendas
       
       const maxPhotoWidth = availableWidth / 2;
       const maxPhotoHeight = availableHeight; // Altura disponível já considera espaço para legendas
@@ -566,7 +566,7 @@ export async function POST(req: Request) {
         
         // Centralizar a foto no espaço disponível
         const centeredX = x + (maxPhotoWidth - photoWidth) / 2;
-        const centeredY = y + (maxPhotoHeight - photoHeight) / 2;
+        const centeredY = y; // Posicionar diretamente na posição y calculada
         
         try {
           console.log(`Adicionando imagem ${startIndex + i + 1} ao PDF`);
