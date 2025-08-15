@@ -15,6 +15,7 @@ interface ProcessImageData {
   serviceName: string;
   comment: string;
   phase: 'antes' | 'durante' | 'depois';
+  captureDate: string;
 }
 
 // Função para verificar autenticação
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
         const serviceName = formData.get(`processImageServiceName_${key.split('_')[1]}`) as string;
         const comment = formData.get(`processImageComment_${key.split('_')[1]}`) as string || '';
         const phase = formData.get(`processImagePhase_${key.split('_')[1]}`) as 'antes' | 'durante' | 'depois';
+        const captureDate = formData.get(`processImageCaptureDate_${key.split('_')[1]}`) as string || new Date().toISOString().split('T')[0];
         
         processImages.push({
           file: buffer,
@@ -107,7 +109,8 @@ export async function POST(request: NextRequest) {
             serviceId,
             serviceName,
             comment,
-            phase
+            phase,
+            captureDate
           }
         });
       }
@@ -382,10 +385,17 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          // Adicionar título da imagem
+          // Adicionar título da imagem com data de captura
+          const captureDate = new Date(imageData.data.captureDate).toLocaleDateString('pt-BR');
           pdf.setFontSize(14);
           pdf.setFont('helvetica', 'bold');
           pdf.text(`${phaseLabels[phase]} - Imagem ${i + 1}`, pageWidth / 2, yPosition, { align: 'center' });
+          yPosition += 8;
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(108, 117, 125);
+          pdf.text(`Data da foto: ${captureDate}`, pageWidth / 2, yPosition, { align: 'center' });
+          pdf.setTextColor(33, 37, 41);
           yPosition += 10;
 
           // Converter e adicionar imagem

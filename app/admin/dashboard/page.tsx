@@ -35,6 +35,7 @@ interface ProcessImageData {
   file: File;
   comment: string;
   phase: 'antes' | 'durante' | 'depois';
+  captureDate: string;
 }
 
 interface ServiceData {
@@ -378,7 +379,8 @@ export default function AdminDashboard() {
   // Funções para gerenciar imagens do processo da obra
   const handleProcessImageUpload = (e: React.ChangeEvent<HTMLInputElement>, phase: 'antes' | 'durante' | 'depois') => {
     const files = Array.from(e.target.files || []);
-    const newImages = files.map(file => ({ file, comment: '', phase }));
+    const currentDate = new Date().toISOString().split('T')[0];
+    const newImages = files.map(file => ({ file, comment: '', phase, captureDate: currentDate }));
     setReportData(prev => ({
       ...prev,
       services: prev.services.map(service => 
@@ -426,7 +428,8 @@ export default function AdminDashboard() {
   // Funções para o relatório de Processo da Obra
   const handleProcessReportImageUpload = (e: React.ChangeEvent<HTMLInputElement>, phase: 'antes' | 'durante' | 'depois') => {
     const files = Array.from(e.target.files || []);
-    const newImages = files.map(file => ({ file, comment: '', phase }));
+    const currentDate = new Date().toISOString().split('T')[0];
+    const newImages = files.map(file => ({ file, comment: '', phase, captureDate: currentDate }));
     setProcessReportData(prev => ({
       ...prev,
       processImages: [...prev.processImages, ...newImages]
@@ -463,6 +466,31 @@ export default function AdminDashboard() {
     setProcessReportData(prev => ({ ...prev, workDate: date }));
   };
 
+  const updateProcessImageCaptureDate = (serviceId: string, imageIndex: number, captureDate: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? {
+              ...service,
+              processImages: service.processImages.map((img, i) => 
+                i === imageIndex ? { ...img, captureDate } : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const updateProcessReportImageCaptureDate = (imageIndex: number, captureDate: string) => {
+    setProcessReportData(prev => ({
+      ...prev,
+      processImages: prev.processImages.map((img, i) => 
+        i === imageIndex ? { ...img, captureDate } : img
+      )
+    }));
+  };
+
   const generateProcessReportPDF = async () => {
     if (processReportData.processImages.length === 0) {
       setMessage('Adicione pelo menos uma imagem para gerar o relatório.');
@@ -493,6 +521,7 @@ export default function AdminDashboard() {
         formData.append(`processImageServiceName_${processImageIndex}`, 'Processo da Obra');
         formData.append(`processImageComment_${processImageIndex}`, processImageData.comment);
         formData.append(`processImagePhase_${processImageIndex}`, processImageData.phase);
+        formData.append(`processImageCaptureDate_${processImageIndex}`, processImageData.captureDate);
         processImageIndex++;
       });
 
