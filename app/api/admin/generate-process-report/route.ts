@@ -138,18 +138,18 @@ export async function POST(request: NextRequest) {
       const currentFontSize = pdf.getFontSize();
       const currentFont = pdf.getFont();
       
-      // Background do header com gradiente visual
+      // Background do header
       pdf.setFillColor(248, 249, 250);
       pdf.rect(margin, margin - 5, pageWidth - 2 * margin, fullHeaderHeight, 'F');
       
-      // Borda superior colorida (identidade visual)
+      // Borda superior colorida
       pdf.setFillColor(255, 193, 7); // Amarelo JWS
       pdf.rect(margin, margin - 5, pageWidth - 2 * margin, 3, 'F');
       
       if (companyLogo) {
-          // Logo centralizado verticalmente no header
-          pdf.addImage(companyLogo, 'JPEG', margin + 8, margin + 3, 28, 22);
-        }
+        // Logo posicionado corretamente
+        pdf.addImage(companyLogo, 'JPEG', margin + 8, margin + 3, 28, 22);
+      }
       
       // Seção principal da empresa
       const mainSectionX = margin + 45;
@@ -160,51 +160,39 @@ export async function POST(request: NextRequest) {
       pdf.setTextColor(33, 37, 41);
       pdf.text('JWS EMPREITEIRA', mainSectionX, margin + 10);
       
-      // Subtítulo com estilo
+      // Subtítulo
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(108, 117, 125);
       pdf.text('Relatório de Processo da Obra', mainSectionX, margin + 18);
       
-      // Seção de contato organizada em duas linhas
+      // Informações de contato organizadas
       const contactY1 = margin + 25;
       const contactY2 = margin + 30;
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(73, 80, 87);
       
-      // Primeira linha: Telefone e Email
-      const phoneX = mainSectionX;
-      const emailX = mainSectionX + 65;
-      
-      // Telefone
+      // Primeira linha: Telefone
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', phoneX, contactY1);
+      pdf.text('Tel:', mainSectionX, contactY1);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 98450-6031', phoneX + 12, contactY1);
+      pdf.text('(21) 98450-6031', mainSectionX + 12, contactY1);
       
-      // Email (verificar se cabe na página)
+      // Email na mesma linha se couber
+      const emailX = mainSectionX + 65;
       pdf.setFont('helvetica', 'bold');
       pdf.text('Email:', emailX, contactY1);
       pdf.setFont('helvetica', 'normal');
-      const emailText = 'jws.manutencao@gmail.com';
-      const emailWidth = pdf.getTextWidth(emailText);
-      const availableWidth = pageWidth - margin - emailX - 16 - 10; // margem de segurança
-      
-      if (emailWidth <= availableWidth) {
-        pdf.text(emailText, emailX + 16, contactY1);
-      } else {
-        // Se não couber, colocar na segunda linha
-        pdf.text(emailText, phoneX + 80, contactY2);
-      }
+      pdf.text('jws.manutencao@gmail.com', emailX + 16, contactY1);
       
       // Segunda linha: CNPJ
       pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', phoneX, contactY2);
+      pdf.text('CNPJ:', mainSectionX, contactY2);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('42.316.144/0001-70', phoneX + 16, contactY2);
+      pdf.text('42.316.144/0001-70', mainSectionX + 16, contactY2);
       
-      // Linha separadora elegante
+      // Linha separadora
       pdf.setDrawColor(222, 226, 230);
       pdf.setLineWidth(0.5);
       pdf.line(margin + 5, margin + fullHeaderHeight - 5, pageWidth - margin - 5, margin + fullHeaderHeight - 5);
@@ -330,6 +318,7 @@ export async function POST(request: NextRequest) {
 
     let isFirstPage = true;
     let yPosition = 0;
+    let hasAddedRegistroTitle = false;
 
     // Processar cada fase
     for (const [phase, images] of Object.entries(imagesByPhase)) {
@@ -341,24 +330,42 @@ export async function POST(request: NextRequest) {
       
       addHeader(isFirstPage);
       yPosition = margin + getHeaderHeight(isFirstPage) + 10;
+      
+      // Informações da obra (apenas na primeira página)
+      if (isFirstPage) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(33, 37, 41);
+        pdf.text(`Obra: ${workName}`, margin, yPosition);
+        yPosition += 7;
+        pdf.text(`Data: ${new Date(workDate).toLocaleDateString('pt-BR')}`, margin, yPosition);
+        yPosition += 7;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(108, 117, 125);
+        pdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, yPosition);
+        
+        yPosition += 20;
+        
+        // Título "Registro Fotográfico" (apenas uma vez)
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(33, 37, 41);
+        pdf.text('Registro Fotográfico', pageWidth / 2, yPosition, { align: 'center' });
+        
+        // Linha decorativa abaixo do título
+        pdf.setDrawColor(255, 193, 7);
+        pdf.setLineWidth(1);
+        const lineWidth = 60;
+        pdf.line((pageWidth - lineWidth) / 2, yPosition + 3, (pageWidth + lineWidth) / 2, yPosition + 3);
+        
+        yPosition += 15;
+        hasAddedRegistroTitle = true;
+      }
+      
       isFirstPage = false;
       
-      // Informações da obra
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(33, 37, 41);
-      pdf.text(`Obra: ${workName}`, margin, yPosition);
-      yPosition += 7;
-      pdf.text(`Data: ${new Date(workDate).toLocaleDateString('pt-BR')}`, margin, yPosition);
-      yPosition += 7;
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(108, 117, 125);
-      pdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, yPosition);
-      
-      yPosition += 15;
-      
       // Título da fase
-      pdf.setFontSize(18);
+      pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(33, 37, 41);
       pdf.text(`FASE: ${phaseLabels[phase]}`, pageWidth / 2, yPosition, { align: 'center' });
@@ -377,7 +384,7 @@ export async function POST(request: NextRequest) {
           yPosition = margin + getHeaderHeight(false) + 10;
           
           // Repetir título da fase na nova página
-          pdf.setFontSize(18);
+          pdf.setFontSize(14);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(33, 37, 41);
           pdf.text(`FASE: ${phaseLabels[phase]} (continuação)`, pageWidth / 2, yPosition, { align: 'center' });
