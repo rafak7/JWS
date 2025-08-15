@@ -127,7 +127,9 @@ export async function POST(req: Request) {
           serviceName: service.name,
           serviceId: serviceId,
           comment: comment,
-          serviceObservations: service.observations || ''
+          serviceObservations: service.observations || '',
+          serviceStartDate: service.startDate || '',
+          serviceEndDate: service.endDate || ''
         });
       }
     }
@@ -455,7 +457,46 @@ export async function POST(req: Request) {
         const serviceTitleX = (pageWidth - serviceTitleWidth) / 2;
         pdf.text(serviceTitle, serviceTitleX, 85);
         
-        let currentY = 105;
+        let currentY = 100;
+        
+        // Datas de realização da obra (se existirem)
+        if (photos[startIndex].serviceStartDate || photos[startIndex].serviceEndDate) {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          const dateTitle = 'Período de Realização:';
+          const dateTitleWidth = pdf.getTextWidth(dateTitle);
+          const dateTitleX = (pageWidth - dateTitleWidth) / 2;
+          pdf.text(dateTitle, dateTitleX, currentY);
+          
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(11);
+          
+          let dateText = '';
+          if (photos[startIndex].serviceStartDate && photos[startIndex].serviceEndDate) {
+            const startDate = new Date(photos[startIndex].serviceStartDate).toLocaleDateString('pt-BR');
+            const endDate = new Date(photos[startIndex].serviceEndDate).toLocaleDateString('pt-BR');
+            if (photos[startIndex].serviceStartDate === photos[startIndex].serviceEndDate) {
+              dateText = `${startDate}`;
+            } else {
+              dateText = `${startDate} a ${endDate}`;
+            }
+          } else if (photos[startIndex].serviceStartDate) {
+            dateText = `Início: ${new Date(photos[startIndex].serviceStartDate).toLocaleDateString('pt-BR')}`;
+          } else if (photos[startIndex].serviceEndDate) {
+            dateText = `Término: ${new Date(photos[startIndex].serviceEndDate).toLocaleDateString('pt-BR')}`;
+          }
+          
+          if (dateText) {
+            const dateTextWidth = pdf.getTextWidth(dateText);
+            const dateTextX = (pageWidth - dateTextWidth) / 2;
+            pdf.text(dateText, dateTextX, currentY + 15);
+            currentY += 35;
+          } else {
+            currentY += 15;
+          }
+        } else {
+          currentY += 15;
+        }
         
         // Observações do serviço (se existirem)
         if (photos[startIndex].serviceObservations) {
@@ -611,7 +652,7 @@ export async function POST(req: Request) {
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(0, 0, 0); // Preto para todas as legendas
           const photoNum = startIndex + i + 1;
-          const legendY = centeredY + photoHeight + 8;
+          let legendY = centeredY + photoHeight + 8;
           
           // Centralizar número da foto
           const photoLabel = `Foto ${photoNum}`;
@@ -619,9 +660,40 @@ export async function POST(req: Request) {
           const photoLabelX = centeredX + (photoWidth - photoLabelWidth) / 2;
           pdf.text(photoLabel, photoLabelX, legendY);
           
+          legendY += 12;
+          
+          // Adicionar data específica da foto se disponível
+          if (photo.serviceStartDate || photo.serviceEndDate) {
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(9);
+            
+            let photoDateText = '';
+            if (photo.serviceStartDate && photo.serviceEndDate) {
+              const startDate = new Date(photo.serviceStartDate).toLocaleDateString('pt-BR');
+              const endDate = new Date(photo.serviceEndDate).toLocaleDateString('pt-BR');
+              if (photo.serviceStartDate === photo.serviceEndDate) {
+                photoDateText = `Data: ${startDate}`;
+              } else {
+                photoDateText = `Período: ${startDate} a ${endDate}`;
+              }
+            } else if (photo.serviceStartDate) {
+              photoDateText = `Data de início: ${new Date(photo.serviceStartDate).toLocaleDateString('pt-BR')}`;
+            } else if (photo.serviceEndDate) {
+              photoDateText = `Data de término: ${new Date(photo.serviceEndDate).toLocaleDateString('pt-BR')}`;
+            }
+            
+            if (photoDateText) {
+              const dateTextWidth = pdf.getTextWidth(photoDateText);
+              const dateTextX = centeredX + (photoWidth - dateTextWidth) / 2;
+              pdf.text(photoDateText, dateTextX, legendY);
+              legendY += 10;
+            }
+          }
+          
           // Adicionar comentário da foto se existir (centralizado abaixo)
           if (photo.comment) {
             pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(9);
             pdf.setTextColor(0, 0, 0); // Manter preto para comentários
             
             // Quebrar o comentário em múltiplas linhas se necessário
@@ -632,7 +704,7 @@ export async function POST(req: Request) {
             commentLines.forEach((line: string, lineIndex: number) => {
               const lineWidth = pdf.getTextWidth(line);
               const lineX = centeredX + (photoWidth - lineWidth) / 2;
-              pdf.text(line, lineX, legendY + 12 + (lineIndex * 10));
+              pdf.text(line, lineX, legendY + (lineIndex * 10));
             });
           }
         } catch (error) {
