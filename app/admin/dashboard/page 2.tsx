@@ -28,6 +28,7 @@ import {
 interface ImageData {
   file: File;
   comment: string;
+  captureDate: string;
 }
 
 interface ServiceData {
@@ -252,7 +253,11 @@ export default function AdminDashboard() {
   // Funções para gerenciar imagens
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newImages = files.map(file => ({ file, comment: '' }));
+    const newImages = files.map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     setReportData(prev => ({
       ...prev,
       services: prev.services.map(service => 
@@ -295,6 +300,24 @@ export default function AdminDashboard() {
               images: service.images.map((img, index) => 
                 index === imageIndex 
                   ? { ...img, comment }
+                  : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const updateImageCaptureDate = (serviceId: string, imageIndex: number, captureDate: string) => {
+    setReportData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId 
+          ? { 
+              ...service, 
+              images: service.images.map((img, index) => 
+                index === imageIndex 
+                  ? { ...img, captureDate }
                   : img
               )
             }
@@ -636,7 +659,11 @@ export default function AdminDashboard() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages = Array.from(files).map(file => ({ file, comment: '' }));
+    const newImages = Array.from(files).map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     
     setPremiereData(prev => ({
       ...prev,
@@ -679,6 +706,22 @@ export default function AdminDashboard() {
               ...service,
               images: service.images.map((img, i) => 
                 i === imageIndex ? { ...img, comment } : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
+  const updatePremiereImageCaptureDate = (serviceId: string, imageIndex: number, captureDate: string) => {
+    setPremiereData(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? {
+              ...service,
+              images: service.images.map((img, i) => 
+                i === imageIndex ? { ...img, captureDate } : img
               )
             }
           : service

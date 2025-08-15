@@ -113,6 +113,7 @@ export async function POST(req: Request) {
       
       const serviceId = formData.get(`image_${i}_serviceId`) as string;
       const comment = formData.get(`image_${i}_comment`) as string;
+      const captureDate = formData.get(`image_${i}_captureDate`) as string;
       const service = services.find((s: any) => s.id === serviceId);
       
       console.log(`Processando imagem ${i} para serviço ${serviceId}`);
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
           serviceName: service.name,
           serviceId: serviceId,
           comment: comment,
+          captureDate: captureDate || '',
           serviceObservations: service.observations || '',
           serviceStartDate: service.startDate || '',
           serviceEndDate: service.endDate || ''
@@ -147,6 +149,7 @@ export async function POST(req: Request) {
       if (!flowchartFile) continue;
       
       const comment = formData.get(`flowchart_${i}_comment`) as string;
+      const captureDate = formData.get(`flowchart_${i}_captureDate`) as string;
       
       console.log(`Processando fluxograma ${i}`);
       
@@ -157,7 +160,8 @@ export async function POST(req: Request) {
         
         flowcharts.push({
           image: flowchartBase64,
-          comment: comment
+          comment: comment,
+          captureDate: captureDate || ''
         });
       }
     }
@@ -663,11 +667,14 @@ export async function POST(req: Request) {
           legendY += 12;
           
           // Adicionar data específica da foto se disponível
-          if (photo.serviceStartDate || photo.serviceEndDate) {
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(9);
-            
-            let photoDateText = '';
+          let photoDateText = '';
+          
+          // Priorizar captureDate se disponível
+          if (photo.captureDate) {
+            const captureDate = new Date(photo.captureDate).toLocaleDateString('pt-BR');
+            photoDateText = `Data da Foto: ${captureDate}`;
+          } else if (photo.serviceStartDate || photo.serviceEndDate) {
+            // Fallback para datas do serviço se captureDate não estiver disponível
             if (photo.serviceStartDate && photo.serviceEndDate) {
               const startDate = new Date(photo.serviceStartDate).toLocaleDateString('pt-BR');
               const endDate = new Date(photo.serviceEndDate).toLocaleDateString('pt-BR');
@@ -681,13 +688,15 @@ export async function POST(req: Request) {
             } else if (photo.serviceEndDate) {
               photoDateText = `Data de término: ${new Date(photo.serviceEndDate).toLocaleDateString('pt-BR')}`;
             }
-            
-            if (photoDateText) {
-              const dateTextWidth = pdf.getTextWidth(photoDateText);
-              const dateTextX = centeredX + (photoWidth - dateTextWidth) / 2;
-              pdf.text(photoDateText, dateTextX, legendY);
-              legendY += 10;
-            }
+          }
+          
+          if (photoDateText) {
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(9);
+            const dateTextWidth = pdf.getTextWidth(photoDateText);
+            const dateTextX = centeredX + (photoWidth - dateTextWidth) / 2;
+            pdf.text(photoDateText, dateTextX, legendY);
+            legendY += 10;
           }
           
           // Adicionar comentário da foto se existir (centralizado abaixo)
@@ -818,7 +827,18 @@ export async function POST(req: Request) {
           
           const description = flowchart.comment || `Fluxograma ${startIndex + 1}`;
           const descWidth = pdf.getTextWidth(description);
-          pdf.text(description, (pageWidth - descWidth) / 2, pageHeight - 15);
+          let legendY = pageHeight - 25;
+          pdf.text(description, (pageWidth - descWidth) / 2, legendY);
+          
+          // Adicionar data do fluxograma se disponível
+          if (flowchart.captureDate) {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            const captureDate = new Date(flowchart.captureDate).toLocaleDateString('pt-BR');
+            const dateText = `Data de Criação: ${captureDate}`;
+            const dateWidth = pdf.getTextWidth(dateText);
+            pdf.text(dateText, (pageWidth - dateWidth) / 2, legendY + 10);
+          }
         } catch (error) {
           console.error(`Erro ao adicionar fluxograma ${startIndex + 1}:`, error);
           

@@ -28,6 +28,7 @@ import {
 interface ImageData {
   file: File;
   comment: string;
+  captureDate: string;
 }
 
 interface ProcessImageData {
@@ -319,7 +320,11 @@ export default function AdminDashboard() {
   // Funções para gerenciar imagens
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newImages = files.map(file => ({ file, comment: '' }));
+    const newImages = files.map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     setReportData(prev => ({
       ...prev,
       services: prev.services.map(service => 
@@ -883,7 +888,11 @@ export default function AdminDashboard() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages = Array.from(files).map(file => ({ file, comment: '' }));
+    const newImages = Array.from(files).map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     
     setPremiereData(prev => ({
       ...prev,
@@ -1046,7 +1055,11 @@ export default function AdminDashboard() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages = Array.from(files).map(file => ({ file, comment: '' }));
+    const newImages = Array.from(files).map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     
     setMark1Data(prev => ({
       ...prev,
@@ -1096,6 +1109,22 @@ export default function AdminDashboard() {
     }));
   };
 
+  const updateMark1ImageCaptureDate = (serviceId: string, imageIndex: number, captureDate: string) => {
+    setMark1Data(prev => ({
+      ...prev,
+      services: prev.services.map(service => 
+        service.id === serviceId
+          ? {
+              ...service,
+              images: service.images.map((img, i) => 
+                i === imageIndex ? { ...img, captureDate } : img
+              )
+            }
+          : service
+      )
+    }));
+  };
+
   const updateMark1Config = (key: keyof ReportConfig, value: boolean) => {
     setMark1Data(prev => ({
       ...prev,
@@ -1134,7 +1163,11 @@ export default function AdminDashboard() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newFlowcharts = Array.from(files).map(file => ({ file, comment: '' }));
+    const newFlowcharts = Array.from(files).map(file => ({ 
+      file, 
+      comment: '', 
+      captureDate: new Date().toISOString().split('T')[0] 
+    }));
     
     setMark1Data(prev => ({
       ...prev,
@@ -1154,6 +1187,15 @@ export default function AdminDashboard() {
       ...prev,
       flowcharts: prev.flowcharts.map((img, i) => 
         i === index ? { ...img, comment } : img
+      )
+    }));
+  };
+
+  const updateMark1FlowchartCaptureDate = (index: number, captureDate: string) => {
+    setMark1Data(prev => ({
+      ...prev,
+      flowcharts: prev.flowcharts.map((img, i) => 
+        i === index ? { ...img, captureDate } : img
       )
     }));
   };
@@ -1194,6 +1236,7 @@ export default function AdminDashboard() {
           formData.append(`image_${imageIndex}`, imageData.file);
           formData.append(`image_${imageIndex}_serviceId`, service.id);
           formData.append(`image_${imageIndex}_comment`, imageData.comment);
+          formData.append(`image_${imageIndex}_captureDate`, imageData.captureDate || '');
           imageIndex++;
         });
       });
@@ -1203,6 +1246,7 @@ export default function AdminDashboard() {
       mark1Data.flowcharts.forEach((flowchart) => {
         formData.append(`flowchart_${flowchartIndex}`, flowchart.file);
         formData.append(`flowchart_${flowchartIndex}_comment`, flowchart.comment);
+        formData.append(`flowchart_${flowchartIndex}_captureDate`, flowchart.captureDate || '');
         flowchartIndex++;
       });
       formData.append('flowchartsCount', flowchartIndex.toString());
@@ -3293,13 +3337,24 @@ export default function AdminDashboard() {
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                <Textarea
-                                  placeholder="Comentário da imagem..."
-                                  value={image.comment}
-                                  onChange={(e) => updateMark1ImageComment(activeMark1ServiceId, index, e.target.value)}
-                                  rows={2}
-                                  className="text-sm"
-                                />
+                                <div className="space-y-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs font-medium text-gray-600">Data da Foto</Label>
+                                    <Input
+                                      type="date"
+                                      value={image.captureDate}
+                                      onChange={(e) => updateMark1ImageCaptureDate(activeMark1ServiceId, index, e.target.value)}
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                  <Textarea
+                                    placeholder="Comentário da imagem..."
+                                    value={image.comment}
+                                    onChange={(e) => updateMark1ImageComment(activeMark1ServiceId, index, e.target.value)}
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -3486,17 +3541,34 @@ export default function AdminDashboard() {
                       </div>
                       
                       {mark1Data.flowcharts.length > 0 && (
-                        <div className="space-y-2">
-                          <Label className="text-sm">Comentários dos Fluxogramas</Label>
+                        <div className="space-y-4">
+                          <Label className="text-sm">Informações dos Fluxogramas</Label>
                           {mark1Data.flowcharts.map((flowchart, index) => (
-                            <div key={`comment-${index}`} className="flex items-center gap-2">
-                              <span className="text-xs font-medium w-24 truncate">Fluxograma {index + 1}:</span>
-                              <Input
-                                value={flowchart.comment}
-                                onChange={(e) => updateMark1FlowchartComment(index, e.target.value)}
-                                placeholder="Descrição do fluxograma..."
-                                className="text-sm"
-                              />
+                            <div key={`flowchart-info-${index}`} className="border rounded-lg p-3 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Fluxograma {index + 1}</span>
+                                <span className="text-xs text-gray-500 truncate">{flowchart.file.name}</span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs font-medium text-gray-600">Data de Criação</Label>
+                                  <Input
+                                    type="date"
+                                    value={flowchart.captureDate}
+                                    onChange={(e) => updateMark1FlowchartCaptureDate(index, e.target.value)}
+                                    className="text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs font-medium text-gray-600">Descrição</Label>
+                                  <Input
+                                    value={flowchart.comment}
+                                    onChange={(e) => updateMark1FlowchartComment(index, e.target.value)}
+                                    placeholder="Descrição do fluxograma..."
+                                    className="text-sm"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
