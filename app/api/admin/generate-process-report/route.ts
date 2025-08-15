@@ -125,8 +125,8 @@ export async function POST(request: NextRequest) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 20;
-    const fullHeaderHeight = 40;
-    const simpleHeaderHeight = 25;
+    const fullHeaderHeight = 45; // Aumentado para acomodar melhor as informações
+    const simpleHeaderHeight = 20; // Reduzido para ser mais compacto
     const footerHeight = 20;
     
     // Carregar logo da empresa
@@ -147,50 +147,50 @@ export async function POST(request: NextRequest) {
       pdf.rect(margin, margin - 5, pageWidth - 2 * margin, 3, 'F');
       
       if (companyLogo) {
-        // Logo posicionado corretamente
-        pdf.addImage(companyLogo, 'JPEG', margin + 8, margin + 3, 28, 22);
+        // Logo posicionado corretamente com mais espaço
+        pdf.addImage(companyLogo, 'JPEG', margin + 5, margin + 2, 25, 20);
       }
       
-      // Seção principal da empresa
-      const mainSectionX = margin + 45;
+      // Seção principal da empresa - ajustada para não sobrepor
+      const mainSectionX = margin + 35;
       
       // Nome da empresa
-      pdf.setFontSize(16);
+      pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(33, 37, 41);
-      pdf.text('JWS EMPREITEIRA', mainSectionX, margin + 10);
+      pdf.text('JWS EMPREITEIRA', mainSectionX, margin + 8);
       
       // Subtítulo
-      pdf.setFontSize(9);
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(108, 117, 125);
-      pdf.text('Relatório de Processo da Obra', mainSectionX, margin + 18);
+      pdf.text('Relatório de Processo da Obra', mainSectionX, margin + 15);
       
-      // Informações de contato organizadas
-      const contactY1 = margin + 25;
-      const contactY2 = margin + 30;
-      pdf.setFontSize(7);
+      // Informações de contato reorganizadas para evitar sobreposição
+      const contactStartY = margin + 22;
+      pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(73, 80, 87);
       
       // Primeira linha: Telefone
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Tel:', mainSectionX, contactY1);
+      pdf.text('Tel:', mainSectionX, contactStartY);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('(21) 98450-6031', mainSectionX + 12, contactY1);
+      pdf.text('(21) 98450-6031', mainSectionX + 10, contactStartY);
       
-      // Email na mesma linha se couber
-      const emailX = mainSectionX + 65;
+      // Segunda linha: Email (movido para linha separada)
+      const emailY = contactStartY + 5;
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Email:', emailX, contactY1);
+      pdf.text('Email:', mainSectionX, emailY);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('jws.manutencao@gmail.com', emailX + 16, contactY1);
+      pdf.text('jws.manutencao@gmail.com', mainSectionX + 14, emailY);
       
-      // Segunda linha: CNPJ
+      // Terceira linha: CNPJ
+      const cnpjY = emailY + 5;
       pdf.setFont('helvetica', 'bold');
-      pdf.text('CNPJ:', mainSectionX, contactY2);
+      pdf.text('CNPJ:', mainSectionX, cnpjY);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('42.316.144/0001-70', mainSectionX + 16, contactY2);
+      pdf.text('42.316.144/0001-70', mainSectionX + 14, cnpjY);
       
       // Linha separadora
       pdf.setDrawColor(222, 226, 230);
@@ -219,21 +219,21 @@ export async function POST(request: NextRequest) {
       pdf.rect(margin, margin - 2, pageWidth - 2 * margin, 2, 'F');
       
       if (companyLogo) {
-          // Logo menor e bem posicionado
-          pdf.addImage(companyLogo, 'JPEG', margin + 5, margin + 2, 18, 14);
-        }
+        // Logo menor e bem posicionado
+        pdf.addImage(companyLogo, 'JPEG', margin + 3, margin + 1, 16, 12);
+      }
       
-      // Nome da empresa com estilo consistente
-      pdf.setFontSize(11);
+      // Nome da empresa com estilo consistente - posição ajustada
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(33, 37, 41);
-      pdf.text('JWS EMPREITEIRA', margin + 28, margin + 11);
+      pdf.text('JWS EMPREITEIRA', margin + 22, margin + 8);
       
-      // Subtítulo menor
-      pdf.setFontSize(7);
+      // Subtítulo menor - posição ajustada
+      pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(108, 117, 125);
-      pdf.text('Relatório de Processo da Obra', margin + 28, margin + 17);
+      pdf.text('Relatório de Processo da Obra', margin + 22, margin + 14);
       
       // Linha separadora elegante
       pdf.setDrawColor(222, 226, 230);

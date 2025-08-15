@@ -259,22 +259,21 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Email e site no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 15);
-      pdf.text('https://www.mark1hvac.com', 50, 25);
+      // Email no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 20);
       
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
       
       // Informações no lado direito
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 260, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
       
       // Título principal do relatório
       pdf.setFontSize(24);
@@ -439,15 +438,15 @@ export async function POST(req: Request) {
       // Título da página de fotos
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Cor preta consistente
+      pdf.setTextColor(0, 0, 0);
       const pageTitle = 'Registro Fotográfico';
       const titleWidth = pdf.getTextWidth(pageTitle);
-      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
+      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 55);
 
       // Linha separadora roxa
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
-      pdf.line(50, 70, pageWidth - 50, 70);
+      pdf.line(50, 62, pageWidth - 50, 62);
       
       // Adicionar nome do serviço e observações como cabeçalho centralizado acima das fotos
       let yOffset = 0;
@@ -459,73 +458,11 @@ export async function POST(req: Request) {
         const serviceTitle = `Serviço: ${photos[startIndex].serviceName}`;
         const serviceTitleWidth = pdf.getTextWidth(serviceTitle);
         const serviceTitleX = (pageWidth - serviceTitleWidth) / 2;
-        pdf.text(serviceTitle, serviceTitleX, 85);
+        pdf.text(serviceTitle, serviceTitleX, 75);
         
-        let currentY = 100;
-        
-        // Datas de realização da obra (se existirem)
-        if (photos[startIndex].serviceStartDate || photos[startIndex].serviceEndDate) {
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          const dateTitle = 'Período de Realização:';
-          const dateTitleWidth = pdf.getTextWidth(dateTitle);
-          const dateTitleX = (pageWidth - dateTitleWidth) / 2;
-          pdf.text(dateTitle, dateTitleX, currentY);
-          
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(11);
-          
-          let dateText = '';
-          if (photos[startIndex].serviceStartDate && photos[startIndex].serviceEndDate) {
-            const startDate = new Date(photos[startIndex].serviceStartDate).toLocaleDateString('pt-BR');
-            const endDate = new Date(photos[startIndex].serviceEndDate).toLocaleDateString('pt-BR');
-            if (photos[startIndex].serviceStartDate === photos[startIndex].serviceEndDate) {
-              dateText = `${startDate}`;
-            } else {
-              dateText = `${startDate} a ${endDate}`;
-            }
-          } else if (photos[startIndex].serviceStartDate) {
-            dateText = `Início: ${new Date(photos[startIndex].serviceStartDate).toLocaleDateString('pt-BR')}`;
-          } else if (photos[startIndex].serviceEndDate) {
-            dateText = `Término: ${new Date(photos[startIndex].serviceEndDate).toLocaleDateString('pt-BR')}`;
-          }
-          
-          if (dateText) {
-            const dateTextWidth = pdf.getTextWidth(dateText);
-            const dateTextX = (pageWidth - dateTextWidth) / 2;
-            pdf.text(dateText, dateTextX, currentY + 15);
-            currentY += 35;
-          } else {
-            currentY += 15;
-          }
-        } else {
-          currentY += 15;
-        }
-        
-        // Observações do serviço (se existirem)
-        if (photos[startIndex].serviceObservations) {
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          const descTitle = 'Descrição:';
-          const descTitleWidth = pdf.getTextWidth(descTitle);
-          const descTitleX = (pageWidth - descTitleWidth) / 2;
-          pdf.text(descTitle, descTitleX, currentY);
-          
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(11);
-          const observationsLines = pdf.splitTextToSize(photos[startIndex].serviceObservations, pageWidth - 100);
-          
-          currentY += 15;
-          observationsLines.forEach((line: string, index: number) => {
-            const lineWidth = pdf.getTextWidth(line);
-            const lineX = (pageWidth - lineWidth) / 2;
-            pdf.text(line, lineX, currentY + (index * 12));
-          });
-          
-          yOffset = (currentY + (observationsLines.length * 12)) - 85 + 20; // Calcular baseado na posição final das observações
-        } else {
-          yOffset = 20; // Apenas espaço para o nome do serviço
-        }
+        // Seção removida: Período de Realização
+        // Seção removida: Descrição
+        yOffset = 10; // Espaço reduzido para mover imagens para cima
       }
       
       // Margens otimizadas para orientação horizontal
@@ -615,7 +552,7 @@ export async function POST(req: Request) {
         
         // Calcular posição da foto (2 lado a lado)
         const x = margin + i * (maxPhotoWidth + spacing);
-        const y = 85 + yOffset; // Começar abaixo do header, título e observações
+        const y = 75 + yOffset; // Posição mais alta para as imagens
         
         // Centralizar a foto no espaço disponível
         const centeredX = x + (maxPhotoWidth - photoWidth) / 2;
@@ -757,35 +694,34 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Email e site no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 15);
-      pdf.text('https://www.mark1hvac.com', 50, 25);
+      // Email no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 20);
       
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
       
       // Informações no lado direito
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
       
       // Título da página
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Cor preta consistente
+      pdf.setTextColor(0, 0, 0);
       const pageTitle = 'Fluxogramas';
       const titleWidth = pdf.getTextWidth(pageTitle);
-      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 60);
+      pdf.text(pageTitle, (pageWidth - titleWidth) / 2, 55);
 
       // Linha separadora roxa
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
-      pdf.line(50, 70, pageWidth - 50, 70);
+      pdf.line(50, 62, pageWidth - 50, 62);
       
       // Margens otimizadas para ocupar a maior parte da página
       const margin = 15;
@@ -913,35 +849,34 @@ export async function POST(req: Request) {
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(255, 255, 255);
       
-      // Email e site no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 15);
-      pdf.text('https://www.mark1hvac.com', 50, 25);
+      // Email no lado esquerdo
+      pdf.text('administrativo@mark1hvac.com', 50, 20);
       
       // Nome da empresa Mark1 centralizado
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
       const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
       
       // Informações no lado direito
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
+      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
+      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
       
       // Título da seção
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 0, 0); // Cor preta consistente
+      pdf.setTextColor(0, 0, 0);
       const sectionTitle = 'Relatório Diário de Obras';
       const sectionTitleWidth = pdf.getTextWidth(sectionTitle);
-      pdf.text(sectionTitle, (pageWidth - sectionTitleWidth) / 2, 65);
+      pdf.text(sectionTitle, (pageWidth - sectionTitleWidth) / 2, 55);
       
       // Linha separadora roxa
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
-      pdf.line(50, 75, pageWidth - 50, 75);
+      pdf.line(50, 62, pageWidth - 50, 62);
       
       // Informações básicas do relatório
       pdf.setFontSize(11);
