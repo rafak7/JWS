@@ -24,6 +24,7 @@ import {
   Edit3,
   Save
 } from 'lucide-react';
+import { PdfMerger } from '@/components/admin/PdfMerger';
 
 interface ImageData {
   file: File;
@@ -1678,7 +1679,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="relatorio" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="relatorio" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     Relatório de Obra
@@ -1698,6 +1699,10 @@ export default function AdminDashboard() {
                   <TabsTrigger value="cronograma" className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     Cronograma de Obra
+                  </TabsTrigger>
+                  <TabsTrigger value="mergepdfs" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Mesclar PDFs
                   </TabsTrigger>
                 </TabsList>
 
@@ -3795,6 +3800,19 @@ export default function AdminDashboard() {
                       <p className="text-xs text-green-600 mt-2">Clique em &quot;Baixar PDF&quot; para gerar o cronograma formatado</p>
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="mergepdfs" className="space-y-6 mt-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Mesclar PDFs</h3>
+                        <p className="text-sm text-gray-600">Combine múltiplos arquivos PDF em um único documento</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <PdfMerger />
                 </TabsContent>
               </Tabs>
             </CardContent>

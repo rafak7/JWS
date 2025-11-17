@@ -338,7 +338,8 @@ export async function POST(request: NextRequest) {
         pdf.setTextColor(33, 37, 41);
         pdf.text(`Obra: ${workName}`, margin, yPosition);
         yPosition += 7;
-        pdf.text(`Data: ${new Date(workDate).toLocaleDateString('pt-BR')}`, margin, yPosition);
+        // Corrigir problema de fuso horário adicionando horário local
+      pdf.text(`Data: ${new Date(workDate + 'T12:00:00').toLocaleDateString('pt-BR')}`, margin, yPosition);
         yPosition += 7;
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(108, 117, 125);
@@ -393,7 +394,8 @@ export async function POST(request: NextRequest) {
 
         try {
           // Adicionar título da imagem com data de captura
-          const captureDate = new Date(imageData.data.captureDate).toLocaleDateString('pt-BR');
+          // Corrigir problema de fuso horário adicionando horário local
+          const captureDate = new Date(imageData.data.captureDate + 'T12:00:00').toLocaleDateString('pt-BR');
           pdf.setFontSize(14);
           pdf.setFont('helvetica', 'bold');
           pdf.text(`${phaseLabels[phase]} - Imagem ${i + 1}`, pageWidth / 2, yPosition, { align: 'center' });
@@ -454,7 +456,8 @@ export async function POST(request: NextRequest) {
       pdf.setTextColor(33, 37, 41);
       pdf.text(`Obra: ${workName}`, margin, yPosition);
       yPosition += 7;
-      pdf.text(`Data: ${new Date(workDate).toLocaleDateString('pt-BR')}`, margin, yPosition);
+      // Corrigir problema de fuso horário adicionando horário local
+      pdf.text(`Data: ${new Date(workDate + 'T12:00:00').toLocaleDateString('pt-BR')}`, margin, yPosition);
       yPosition += 7;
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(108, 117, 125);

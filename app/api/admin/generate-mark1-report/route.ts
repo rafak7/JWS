@@ -53,6 +53,51 @@ function loadMark1Logo(): string | null {
   return null;
 }
 
+// Função para criar header padronizado
+function createHeader(pdf: any, mark1Logo: string, pageWidth: number) {
+  // Header azul com informações da empresa
+  pdf.setFillColor(41, 128, 185);
+  pdf.rect(0, 0, pageWidth, 40, 'F');
+  
+  // Logo da Mark1 no header
+  if (mark1Logo) {
+    const logoSize = 25;
+    const logoX = 15;
+    const logoY = 7.5;
+    pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
+  }
+  
+  // Informações da empresa no header - Layout reorganizado
+  pdf.setTextColor(255, 255, 255);
+  
+  // Primeira linha: Email (esquerda) e OR (direita)
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('administrativo@mark1hvac.com', 50, 12);
+  
+  // Calcular posição do OR para não cortar
+  const orText = 'OR: 21 96462-6765 / 99412-7927';
+  const orWidth = pdf.getTextWidth(orText);
+  pdf.text(orText, pageWidth - orWidth - 10, 12);
+  
+  // Segunda linha: Nome da empresa centralizado (maior e mais destacado)
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+  const companyNameWidth = pdf.getTextWidth(companyName);
+  pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 28);
+  
+  // Terceira linha: Website (esquerda) e CNPJ (direita)
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('https://www.mark1hvac.com', 50, 38);
+  
+  // Calcular posição do CNPJ para não cortar
+  const cnpjText = 'CNPJ: 39.171.921/0001-90';
+  const cnpjWidth = pdf.getTextWidth(cnpjText);
+  pdf.text(cnpjText, pageWidth - cnpjWidth - 10, 38);
+}
+
 // Função para converter imagem para base64 com compressão
 async function imageToBase64(file: any): Promise<string> {
   try {
@@ -242,38 +287,8 @@ export async function POST(req: Request) {
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Header azul com informações da empresa
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 260, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
+      // Criar header padronizado
+      createHeader(pdf, mark1Logo, pageWidth);
       
       // Título principal do relatório
       pdf.setFontSize(24);
@@ -401,39 +416,8 @@ export async function POST(req: Request) {
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email e site no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 15);
-      pdf.text('https://www.mark1hvac.com', 50, 25);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
+      // Criar header padronizado
+      createHeader(pdf, mark1Logo, pageWidth);
       
       // Título da página de fotos
       pdf.setFontSize(16);
@@ -608,22 +592,26 @@ export async function POST(req: Request) {
           
           // Priorizar captureDate se disponível
           if (photo.captureDate) {
-            const captureDate = new Date(photo.captureDate).toLocaleDateString('pt-BR');
+            // Corrigir problema de fuso horário adicionando horário local
+            const captureDate = new Date(photo.captureDate + 'T12:00:00').toLocaleDateString('pt-BR');
             photoDateText = `Data da Foto: ${captureDate}`;
           } else if (photo.serviceStartDate || photo.serviceEndDate) {
             // Fallback para datas do serviço se captureDate não estiver disponível
             if (photo.serviceStartDate && photo.serviceEndDate) {
-              const startDate = new Date(photo.serviceStartDate).toLocaleDateString('pt-BR');
-              const endDate = new Date(photo.serviceEndDate).toLocaleDateString('pt-BR');
+              // Corrigir problema de fuso horário adicionando horário local
+              const startDate = new Date(photo.serviceStartDate + 'T12:00:00').toLocaleDateString('pt-BR');
+              const endDate = new Date(photo.serviceEndDate + 'T12:00:00').toLocaleDateString('pt-BR');
               if (photo.serviceStartDate === photo.serviceEndDate) {
                 photoDateText = `Data: ${startDate}`;
               } else {
                 photoDateText = `Período: ${startDate} a ${endDate}`;
               }
             } else if (photo.serviceStartDate) {
-              photoDateText = `Data de início: ${new Date(photo.serviceStartDate).toLocaleDateString('pt-BR')}`;
+              // Corrigir problema de fuso horário adicionando horário local
+              photoDateText = `Data de início: ${new Date(photo.serviceStartDate + 'T12:00:00').toLocaleDateString('pt-BR')}`;
             } else if (photo.serviceEndDate) {
-              photoDateText = `Data de término: ${new Date(photo.serviceEndDate).toLocaleDateString('pt-BR')}`;
+              // Corrigir problema de fuso horário adicionando horário local
+              photoDateText = `Data de término: ${new Date(photo.serviceEndDate + 'T12:00:00').toLocaleDateString('pt-BR')}`;
             }
           }
           
@@ -677,38 +665,8 @@ export async function POST(req: Request) {
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
+      // Criar header padronizado
+      createHeader(pdf, mark1Logo, pageWidth);
       
       // Título da página
       pdf.setFontSize(16);
@@ -770,7 +728,8 @@ export async function POST(req: Request) {
           if (flowchart.captureDate) {
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
-            const captureDate = new Date(flowchart.captureDate).toLocaleDateString('pt-BR');
+            // Corrigir problema de fuso horário adicionando horário local
+            const captureDate = new Date(flowchart.captureDate + 'T12:00:00').toLocaleDateString('pt-BR');
             const dateText = `Data de Criação: ${captureDate}`;
             const dateWidth = pdf.getTextWidth(dateText);
             pdf.text(dateText, (pageWidth - dateWidth) / 2, legendY + 10);
@@ -832,38 +791,8 @@ export async function POST(req: Request) {
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
+      // Criar header padronizado
+      createHeader(pdf, mark1Logo, pageWidth);
       
       // Título da seção
       pdf.setFontSize(18);
@@ -898,7 +827,8 @@ export async function POST(req: Request) {
       }
       
       // Data (usando dateRange dos serviços se disponível, senão a data fornecida)
-      const displayDate = dateRange || new Date(date).toLocaleDateString('pt-BR');
+      // Corrigir problema de fuso horário adicionando horário local
+      const displayDate = dateRange || new Date(date + 'T12:00:00').toLocaleDateString('pt-BR');
       pdf.text(`Data: ${displayDate}`, 50, yPos);
       yPos += 10;
       

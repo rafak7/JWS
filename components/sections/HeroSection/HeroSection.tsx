@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, FileText } from 'lucide-react';
 import './HeroSection.scss';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export function HeroSection() {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -76,12 +77,23 @@ export function HeroSection() {
           <p className="hero-section__subtitle">
             Serviços profissionais para dar vida aos seus ambientes
           </p>
-          <Button
-            onClick={scrollToContact}
-            className="hero-section__cta"
-          >
-            Solicitar Orçamento
-          </Button>
+          <div className="hero-section__buttons">
+            <Button
+              onClick={scrollToContact}
+              className="hero-section__cta"
+            >
+              Solicitar Orçamento
+            </Button>
+            <Link href="/pdf-merger">
+              <Button
+                variant="outline"
+                className="hero-section__cta hero-section__cta--secondary"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Mesclar PDFs
+              </Button>
+            </Link>
+          </div>
         </motion.div>
         
         <motion.div
