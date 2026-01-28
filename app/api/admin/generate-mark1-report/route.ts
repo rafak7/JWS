@@ -3,6 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import { jsPDF } from 'jspdf';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 // Configuração de runtime para esta API route
 export const runtime = 'nodejs';
@@ -57,16 +58,16 @@ function loadMark1Logo(): string | null {
 async function imageToBase64(file: any): Promise<string> {
   try {
     console.log(`Convertendo imagem para base64, tipo: ${file.type}, tamanho: ${file.size} bytes`);
-    
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     // Limitar tamanho da imagem para evitar problemas de memória
     const maxSize = 1000 * 1024; // 1MB
     let base64 = buffer.toString('base64');
-    
+
     console.log(`Tamanho do buffer original: ${buffer.length} bytes`);
-    
+
     // Se a imagem for muito grande, reduzir qualidade
     if (buffer.length > maxSize) {
       console.log(`Imagem muito grande (${buffer.length} bytes), reduzindo tamanho`);
@@ -76,11 +77,11 @@ async function imageToBase64(file: any): Promise<string> {
       base64 = reducedBuffer.toString('base64');
       console.log(`Tamanho reduzido: ${reducedBuffer.length} bytes`);
     }
-    
+
     const mimeType = file.type || 'image/jpeg';
     const result = `data:${mimeType};base64,${base64}`;
     console.log(`Base64 gerado com sucesso, tamanho final: ${result.length} caracteres`);
-    
+
     return result;
   } catch (error) {
     console.error('Erro ao converter imagem para base64:', error);
@@ -100,29 +101,31 @@ export async function POST(req: Request) {
     const date = formData.get('date') as string || new Date().toISOString().split('T')[0];
     const startTime = formData.get('startTime') as string || '08:00';
     const endTime = formData.get('endTime') as string || '17:00';
-    
+    const reportTitle = formData.get('reportTitle') as string || 'Relatório Diário de Obras';
+
     console.log('Iniciando geração do relatório Mark1');
     console.log(`Serviços recebidos: ${services.length}`);
-    
+    console.log('Configurações recebidas:', config);
+
     // Processar imagens dos serviços
     const serviceImages: any[] = [];
-    
+
     for (let i = 0; i < 100; i++) {
       const imageFile = formData.get(`image_${i}`);
       if (!imageFile) break;
-      
+
       const serviceId = formData.get(`image_${i}_serviceId`) as string;
       const comment = formData.get(`image_${i}_comment`) as string;
       const captureDate = formData.get(`image_${i}_captureDate`) as string;
       const service = services.find((s: any) => s.id === serviceId);
-      
+
       console.log(`Processando imagem ${i} para serviço ${serviceId}`);
-      
+
       if (service && imageFile instanceof Blob) {
         console.log(`Convertendo imagem ${i} para base64`);
         const imageBase64 = await imageToBase64(imageFile);
         console.log(`Imagem ${i} convertida com sucesso, tamanho: ${imageBase64.length}`);
-        
+
         serviceImages.push({
           image: imageBase64,
           serviceName: service.name,
@@ -135,29 +138,29 @@ export async function POST(req: Request) {
         });
       }
     }
-    
+
     console.log(`Total de imagens processadas: ${serviceImages.length}`);
 
     // Processar fluxogramas
     const flowcharts: any[] = [];
     const flowchartsCount = parseInt(formData.get('flowchartsCount') as string || '0');
-    
+
     console.log(`Processando ${flowchartsCount} fluxogramas`);
-    
+
     for (let i = 0; i < flowchartsCount; i++) {
       const flowchartFile = formData.get(`flowchart_${i}`);
       if (!flowchartFile) continue;
-      
+
       const comment = formData.get(`flowchart_${i}_comment`) as string;
       const captureDate = formData.get(`flowchart_${i}_captureDate`) as string;
-      
+
       console.log(`Processando fluxograma ${i}`);
-      
+
       if (flowchartFile instanceof Blob) {
         console.log(`Convertendo fluxograma ${i} para base64`);
         const flowchartBase64 = await imageToBase64(flowchartFile);
         console.log(`Fluxograma ${i} convertido com sucesso`);
-        
+
         flowcharts.push({
           image: flowchartBase64,
           comment: comment,
@@ -165,19 +168,27 @@ export async function POST(req: Request) {
         });
       }
     }
-    
+
     console.log(`Total de fluxogramas processados: ${flowcharts.length}`);
-    
+
     // Carregar logo
     const mark1LogoPath = path.join(process.cwd(), 'public/images/logo-mark1.jpeg');
     const mark1Logo = fs.readFileSync(mark1LogoPath).toString('base64');
-    
+
+    // Gerar senha aleatória forte para o proprietário (bloqueio de edição)
+    const ownerPassword = crypto.randomBytes(16).toString('hex');
+
     // Criar PDF
     const { jsPDF } = await import('jspdf');
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
+      encryption: {
+        userPermissions: ["print"],
+        ownerPassword: ownerPassword,
+        userPassword: "" // Abrir sem senha
+      }
     });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -191,33 +202,80 @@ export async function POST(req: Request) {
     const createWhiteToNavyGradient = () => {
       const gradientSteps = 30;
       const stepHeight = pageHeight / gradientSteps;
-      
+
       for (let i = 0; i < gradientSteps; i++) {
         // Interpolação de cores do branco (255, 255, 255) ao azul escuro (0, 0, 128)
         const ratio = i / (gradientSteps - 1);
         const r = Math.round(255 - (255) * ratio);
         const g = Math.round(255 - (255) * ratio);
         const b = Math.round(255 - (255 - 128) * ratio);
-        
+
         pdf.setFillColor(r, g, b);
         pdf.rect(0, i * stepHeight, pageWidth, stepHeight + 1, 'F');
       }
+    };
+
+    // Função para desenhar o cabeçalho padrão
+    const drawHeader = () => {
+      // Header background
+      pdf.setFillColor(41, 128, 185);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+
+      // Logo Area
+      const logoSize = 25;
+      const logoMargin = 10; // Reduced margin to prevent overlap
+      const logoY = (40 - logoSize) / 2;
+
+      // White background for logo
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(logoMargin, logoY, logoSize, logoSize, 'F');
+
+      if (mark1Logo) {
+        const imgPadding = 2;
+        pdf.addImage(mark1Logo, 'JPEG', logoMargin + imgPadding, logoY + imgPadding, logoSize - (imgPadding * 2), logoSize - (imgPadding * 2));
+      }
+
+      // Left Info (Email & Site)
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(255, 255, 255);
+
+      const leftInfoX = logoMargin + logoSize + 5;
+      // Align with top of logo
+      pdf.text('administrativo@mark1hvac.com', leftInfoX, logoY + 5);
+      // Align with bottom of logo
+      pdf.text('https://www.mark1hvac.com', leftInfoX, logoY + logoSize - 2);
+
+      // Right Info (OR & CNPJ)
+      const rightInfoX = pageWidth - 10; // Symmetric margin
+      // Align with top of logo
+      pdf.text('OR: 21 96462-6765 / 99412-7927', rightInfoX, logoY + 5, { align: 'right' });
+      // Align with bottom of logo
+      pdf.text('CNPJ: 39.171.921/0001-90', rightInfoX, logoY + logoSize - 2, { align: 'right' });
+
+      // Center Title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      const title = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
+      const titleWidth = pdf.getTextWidth(title);
+      // Vertically centered (approximate middle of text height)
+      pdf.text(title, (pageWidth - titleWidth) / 2, 23);
     };
 
     // Função para criar página de capa do Diário de Obra
     const addCoverPage = () => {
       // Criar fundo degradê do branco ao azul escuro
       createWhiteToNavyGradient();
-      
+
       // Logo da Mark1 bem centralizada (otimizada para horizontal)
       if (mark1Logo) {
         const logoSize = 80; // Logo um pouco maior para aproveitar o espaço horizontal
         const logoX = (pageWidth - logoSize) / 2;
         const logoY = (pageHeight - logoSize) / 2 - 20; // Centro da página, um pouco para cima
-        
+
         pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
       }
-      
+
       // Título principal logo abaixo da logo, centralizado
       pdf.setFontSize(28); // Texto maior para aproveitar o espaço
       pdf.setFont('helvetica', 'bold');
@@ -226,7 +284,7 @@ export async function POST(req: Request) {
       const titleWidth = pdf.getTextWidth(title);
       const titleY = (pageHeight / 2) + 35; // Logo abaixo do centro
       pdf.text(title, (pageWidth - titleWidth) / 2, titleY);
-      
+
       // Reset completo de estilos
       pdf.setTextColor(0, 0, 0);
       pdf.setFillColor(0, 0, 0);
@@ -235,63 +293,33 @@ export async function POST(req: Request) {
     };
 
     // Função para criar página de título do diário
-    const addTitlePage = (dateRange: string, location: string, company: string, address: string, date: string, startTime: string, endTime: string) => {
+    const addTitlePage = (dateRange: string, location: string, company: string, address: string, date: string, startTime: string, endTime: string, config: any = {}, reportTitle: string = 'Relatório Diário de Obras') => {
       pdf.addPage();
-      
+
       // Fundo branco limpo
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      // Header azul com informações da empresa
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 260, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
-      
-      // Título principal do relatório
+
+      // Desenhar cabeçalho padrão
+      drawHeader();
+
+      // Título principal do relatório (personalizado)
       pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(0, 0, 0); // Cor preta consistente
-      const mainTitle = 'Relatório Diário de Obras';
-      
+      const mainTitle = reportTitle;
+
       // Função para quebrar texto em múltiplas linhas
       const wrapText = (text: string, maxWidth: number) => {
         const words = text.split(' ');
         const lines: string[] = [];
         let currentLine = '';
-        
+
         for (let i = 0; i < words.length; i++) {
           const word = words[i];
           const testLine = currentLine ? `${currentLine} ${word}` : word;
           const testWidth = pdf.getTextWidth(testLine);
-          
+
           if (testWidth <= maxWidth) {
             currentLine = testLine;
           } else {
@@ -305,88 +333,101 @@ export async function POST(req: Request) {
             }
           }
         }
-        
+
         if (currentLine) {
           lines.push(currentLine);
         }
-        
+
         return lines;
       };
-      
+
       // Quebrar o título se necessário (largura máxima: 70% da página)
       const maxTitleWidth = pageWidth * 0.7;
       const titleLines = wrapText(mainTitle, maxTitleWidth);
-      
+
       // Renderizar o título (centralizado)
       let titleYPos = 70;
       const lineHeight = 28; // Espaçamento entre linhas
-      
+
       titleLines.forEach((line, index) => {
         const lineWidth = pdf.getTextWidth(line);
         const xPos = (pageWidth - lineWidth) / 2;
         pdf.text(line, xPos, titleYPos + (index * lineHeight));
       });
-      
+
       // Ajustar posição da linha separadora baseada no número de linhas do título
       const separatorYPos = titleYPos + ((titleLines.length - 1) * lineHeight) + 15;
-      
+
       // Linha separadora roxa
       pdf.setLineWidth(3);
       pdf.setDrawColor(128, 0, 128); // Roxo
       pdf.line(50, separatorYPos, pageWidth - 50, separatorYPos);
-      
+
       // Informações do relatório organizadas
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
-      
+
       let yPos = separatorYPos + 25;
-      
-      // Empresa/Cliente (apenas se preenchido)
-      if (company) {
+
+      // Empresa/Cliente (apenas se preenchido e habilitado na configuração)
+      if (company && (config.includeMark1Company ?? true)) {
         pdf.setFont('helvetica', 'bold');
         pdf.text('Empresa / Cliente:', 50, yPos);
         pdf.setFont('helvetica', 'normal');
         pdf.text(company, 50, yPos + 8);
         yPos += 22;
       }
-      
-      // Endereço (apenas se preenchido)
-      if (address) {
+
+      // Endereço (apenas se preenchido e habilitado na configuração)
+      if (address && (config.includeMark1Address ?? true)) {
         pdf.setFont('helvetica', 'bold');
         pdf.text('Endereço:', 50, yPos);
         pdf.setFont('helvetica', 'normal');
         pdf.text(address, 50, yPos + 8);
         yPos += 22;
       }
-      
-      // Data (usando dateRange dos serviços se disponível, senão a data fornecida)
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Data:', 50, yPos);
-      pdf.setFont('helvetica', 'normal');
-      const displayDate = dateRange || new Date(date).toLocaleDateString('pt-BR');
-      pdf.text(displayDate, 50, yPos + 8);
-      yPos += 22;
-      
-      // Horários
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Horário de Início:', 50, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(startTime, 50, yPos + 8);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Horário de Término:', 200, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(endTime, 200, yPos + 8);
-      yPos += 22;
-      
-      // Local da Obra (apenas se preenchido)
-      if (location) {
+
+      // Data (apenas se habilitado na configuração)
+      console.log('includeMark1Date:', config.includeMark1Date, 'resultado:', config.includeMark1Date ?? true);
+      if (config.includeMark1Date ?? true) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Data:', 50, yPos);
+        pdf.setFont('helvetica', 'normal');
+        const displayDate = dateRange || new Date(date).toLocaleDateString('pt-BR');
+        pdf.text(displayDate, 50, yPos + 8);
+        yPos += 22;
+      }
+
+      // Horários (apenas se habilitados na configuração)
+      const showStartTime = config.includeMark1StartTime ?? true;
+      const showEndTime = config.includeMark1EndTime ?? true;
+
+      if (showStartTime || showEndTime) {
+        if (showStartTime) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Horário de Início:', 50, yPos);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(startTime, 50, yPos + 8);
+        }
+
+        if (showEndTime) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Horário de Término:', showStartTime ? 200 : 50, yPos);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(endTime, showStartTime ? 200 : 50, yPos + 8);
+        }
+
+        yPos += 22;
+      }
+
+      // Local da Obra (apenas se preenchido e habilitado na configuração)
+      if (location && (config.includeMark1Location ?? true)) {
         pdf.setFont('helvetica', 'bold');
         pdf.text('Local da Obra:', 50, yPos);
         pdf.setFont('helvetica', 'normal');
         pdf.text(location, 50, yPos + 8);
       }
-      
+
       // Reset de estilos
       pdf.setDrawColor(0, 0, 0);
       pdf.setLineWidth(0.2);
@@ -396,45 +437,14 @@ export async function POST(req: Request) {
     // Função para adicionar 2 fotos por página
     const add2PhotosPage = async (photos: any[], startIndex: number) => {
       pdf.addPage();
-      
+
       // Fundo branco limpo
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email e site no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 15);
-      pdf.text('https://www.mark1hvac.com', 50, 25);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 25);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 180, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 150, 25);
-      
+
+      // Desenhar cabeçalho padrão
+      drawHeader();
+
       // Título da página de fotos
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
@@ -447,7 +457,7 @@ export async function POST(req: Request) {
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 62, pageWidth - 50, 62);
-      
+
       // Adicionar nome do serviço e observações como cabeçalho centralizado acima das fotos
       let yOffset = 0;
       if (photos[startIndex] && photos[startIndex].serviceName) {
@@ -459,20 +469,20 @@ export async function POST(req: Request) {
         const serviceTitleWidth = pdf.getTextWidth(serviceTitle);
         const serviceTitleX = (pageWidth - serviceTitleWidth) / 2;
         pdf.text(serviceTitle, serviceTitleX, 75);
-        
+
         // Seção removida: Período de Realização
         // Seção removida: Descrição
         yOffset = 10; // Espaço reduzido para mover imagens para cima
       }
-      
+
       // Margens otimizadas para orientação horizontal
       const margin = 20;
       const spacing = 15;
       const padding = 8;
-      
+
       // Calcular posições para 2 fotos lado a lado (ajustado para o novo header e observações)
       const availableWidth = pageWidth - 2 * margin - spacing;
-      
+
       // Calcular espaço necessário para legendas e comentários
       let maxCommentLines = 0;
       for (let i = 0; i < 2 && startIndex + i < photos.length; i++) {
@@ -482,37 +492,37 @@ export async function POST(req: Request) {
           maxCommentLines = Math.max(maxCommentLines, commentLines.length);
         }
       }
-      
+
       // Espaço necessário para legendas: 8 (espaço) + 10 (altura do texto "Foto X") + 12 (espaço) + (linhas do comentário * 10) + 20 (margem inferior)
       const legendSpace = 8 + 10 + 12 + (maxCommentLines * 10) + 20;
-      
+
       const availableHeight = pageHeight - 2 * margin - 60 - legendSpace; // 60 para header e título + espaço para legendas
-      
+
       const maxPhotoWidth = availableWidth / 2;
       const maxPhotoHeight = availableHeight; // Altura disponível já considera espaço para legendas
-      
+
       // Verificar se temos imagens para processar
       if (startIndex >= photos.length) {
         console.log('Sem imagens para processar nesta página');
         return;
       }
-      
+
       // Adicionar as fotos
       for (let i = 0; i < 2 && startIndex + i < photos.length; i++) {
         const photo = photos[startIndex + i];
-        
+
         if (!photo || !photo.image) {
           console.error(`Imagem ${startIndex + i} não encontrada ou inválida`);
           continue;
         }
-        
+
         // Calcular dimensões mantendo proporção (usando proporção otimizada)
         let photoWidth = maxPhotoWidth;
         let photoHeight = maxPhotoHeight;
-        
+
         // Usar proporção 3:2 para melhor aproveitamento do espaço
-        const aspectRatio = 3/2;
-        
+        const aspectRatio = 3 / 2;
+
         if (maxPhotoWidth / maxPhotoHeight > aspectRatio) {
           // Espaço disponível é mais largo que 3:2, limitar pela altura
           photoHeight = maxPhotoHeight;
@@ -522,25 +532,25 @@ export async function POST(req: Request) {
           photoWidth = maxPhotoWidth;
           photoHeight = photoWidth / aspectRatio;
         }
-        
+
         // Garantir tamanho mínimo para boa visualização
         const minWidth = 120;
         const minHeight = 80;
-        
+
         if (photoWidth < minWidth) {
           photoWidth = minWidth;
           photoHeight = photoWidth / aspectRatio;
         }
-        
+
         if (photoHeight < minHeight) {
           photoHeight = minHeight;
           photoWidth = photoHeight * aspectRatio;
         }
-        
+
         // Verificar se ainda há espaço suficiente na página para as legendas
         const photoBottomY = 85 + yOffset + photoHeight;
         const maxAllowedY = pageHeight - margin - legendSpace;
-        
+
         if (photoBottomY > maxAllowedY) {
           // Reduzir o tamanho da foto para caber na página
           const availablePhotoHeight = maxAllowedY - (85 + yOffset);
@@ -549,33 +559,33 @@ export async function POST(req: Request) {
             photoWidth = photoHeight * aspectRatio;
           }
         }
-        
+
         // Calcular posição da foto (2 lado a lado)
         const x = margin + i * (maxPhotoWidth + spacing);
         const y = 75 + yOffset; // Posição mais alta para as imagens
-        
+
         // Centralizar a foto no espaço disponível
         const centeredX = x + (maxPhotoWidth - photoWidth) / 2;
         const centeredY = y; // Posicionar diretamente na posição y calculada
-        
+
         try {
           console.log(`Adicionando imagem ${startIndex + i + 1} ao PDF`);
-          
+
           // Adicionar sombra suave
           pdf.setFillColor(220, 220, 220);
           pdf.roundedRect(centeredX + 2, centeredY + 2, photoWidth, photoHeight, 3, 3, 'F');
-          
+
           // Adicionar borda branca
           pdf.setFillColor(255, 255, 255);
           pdf.setDrawColor(240, 240, 240);
           pdf.setLineWidth(0.5);
           pdf.roundedRect(centeredX, centeredY, photoWidth, photoHeight, 3, 3, 'FD');
-          
+
           // Adicionar borda azul fina
           pdf.setDrawColor(0, 0, 128);
           pdf.setLineWidth(0.2);
           pdf.roundedRect(centeredX + 1, centeredY + 1, photoWidth - 2, photoHeight - 2, 2, 2, 'S');
-          
+
           // Adicionar a foto com margens internas
           pdf.addImage(
             photo.image, // Já é base64
@@ -587,25 +597,25 @@ export async function POST(req: Request) {
             `img-${startIndex + i}`,
             'MEDIUM' // Qualidade média para melhor visualização
           );
-          
+
           // Legenda da foto
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(0, 0, 0); // Preto para todas as legendas
           const photoNum = startIndex + i + 1;
           let legendY = centeredY + photoHeight + 8;
-          
+
           // Centralizar número da foto
           const photoLabel = `Foto ${photoNum}`;
           const photoLabelWidth = pdf.getTextWidth(photoLabel);
           const photoLabelX = centeredX + (photoWidth - photoLabelWidth) / 2;
           pdf.text(photoLabel, photoLabelX, legendY);
-          
+
           legendY += 12;
-          
+
           // Adicionar data específica da foto se disponível
           let photoDateText = '';
-          
+
           // Priorizar captureDate se disponível
           if (photo.captureDate) {
             const captureDate = new Date(photo.captureDate).toLocaleDateString('pt-BR');
@@ -626,7 +636,7 @@ export async function POST(req: Request) {
               photoDateText = `Data de término: ${new Date(photo.serviceEndDate).toLocaleDateString('pt-BR')}`;
             }
           }
-          
+
           if (photoDateText) {
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(9);
@@ -635,17 +645,17 @@ export async function POST(req: Request) {
             pdf.text(photoDateText, dateTextX, legendY);
             legendY += 10;
           }
-          
+
           // Adicionar comentário da foto se existir (centralizado abaixo)
           if (photo.comment) {
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(9);
             pdf.setTextColor(0, 0, 0); // Manter preto para comentários
-            
+
             // Quebrar o comentário em múltiplas linhas se necessário
             const maxCommentWidth = photoWidth - 2 * padding;
             const commentLines = pdf.splitTextToSize(photo.comment, maxCommentWidth);
-            
+
             // Centralizar cada linha do comentário
             commentLines.forEach((line: string, lineIndex: number) => {
               const lineWidth = pdf.getTextWidth(line);
@@ -655,61 +665,31 @@ export async function POST(req: Request) {
           }
         } catch (error) {
           console.error(`Erro ao adicionar imagem ${startIndex + i + 1}:`, error);
-          
+
           // Adicionar placeholder em caso de erro
           pdf.setFillColor(240, 240, 240);
           pdf.rect(centeredX + padding, centeredY + padding, photoWidth - 2 * padding, photoHeight - 2 * padding, 'F');
-          
+
           pdf.setFontSize(12);
           pdf.setTextColor(100, 100, 100);
           pdf.text('Erro ao carregar imagem', centeredX + photoWidth / 2 - 40, centeredY + photoHeight / 2);
         }
       }
-      
+
       // Nome do serviço removido do rodapé (agora está acima das fotos)
     };
 
     // Função para adicionar página de fluxogramas
     const addFlowchartsPage = async (flowcharts: any[], startIndex: number, flowchartsPerPage: number = 1) => {
       pdf.addPage();
-      
+
       // Fundo branco limpo
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
-      
+
+      // Desenhar cabeçalho padrão
+      drawHeader();
+
       // Título da página
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
@@ -722,28 +702,28 @@ export async function POST(req: Request) {
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 62, pageWidth - 50, 62);
-      
+
       // Margens otimizadas para ocupar a maior parte da página
       const margin = 15;
-      
+
       // Calcular posições para 1 fluxograma por página (ajustado para o novo header)
       const availableWidth = pageWidth - 2 * margin;
       const availableHeight = pageHeight - 2 * margin - 80; // 80 para header e título
-      
+
       // Apenas um fluxograma por página
       if (startIndex < flowcharts.length) {
         const flowchart = flowcharts[startIndex];
-        
+
         // Posição do fluxograma centralizado na página
         const y = 85; // Começar abaixo do header e título
-        
+
         try {
           // Adicionar borda e sombra para o fluxograma
           pdf.setDrawColor(200, 200, 200);
           pdf.setFillColor(255, 255, 255);
           pdf.setLineWidth(0.5);
           pdf.roundedRect(margin, y, availableWidth, availableHeight - 15, 3, 3, 'FD');
-          
+
           // Adicionar o fluxograma
           pdf.addImage(
             flowchart.image,
@@ -755,17 +735,17 @@ export async function POST(req: Request) {
             `flowchart-${startIndex}`,
             'MEDIUM'
           );
-          
+
           // Adicionar descrição do fluxograma
           pdf.setFontSize(12);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(0, 0, 0);
-          
+
           const description = flowchart.comment || `Fluxograma ${startIndex + 1}`;
           const descWidth = pdf.getTextWidth(description);
           let legendY = pageHeight - 25;
           pdf.text(description, (pageWidth - descWidth) / 2, legendY);
-          
+
           // Adicionar data do fluxograma se disponível
           if (flowchart.captureDate) {
             pdf.setFontSize(10);
@@ -777,11 +757,11 @@ export async function POST(req: Request) {
           }
         } catch (error) {
           console.error(`Erro ao adicionar fluxograma ${startIndex + 1}:`, error);
-          
+
           // Adicionar placeholder em caso de erro
           pdf.setFillColor(240, 240, 240);
           pdf.rect(margin + 10, y + 10, availableWidth - 20, availableHeight - 35, 'F');
-          
+
           pdf.setFontSize(14);
           pdf.setTextColor(100, 100, 100);
           const errorText = 'Erro ao carregar fluxograma';
@@ -798,73 +778,43 @@ export async function POST(req: Request) {
       if (dates.length > 0) {
         const startDates = dates.filter((s: any) => s.startDate).map((s: any) => new Date(s.startDate + 'T12:00:00'));
         const endDates = dates.filter((s: any) => s.endDate).map((s: any) => new Date(s.endDate + 'T12:00:00'));
-        
+
         if (startDates.length > 0 && endDates.length > 0) {
           const minDate = new Date(Math.min(...startDates.map((d: Date) => d.getTime())));
           const maxDate = new Date(Math.max(...endDates.map((d: Date) => d.getTime())));
-          
+
           const formatDate = (date: Date) => {
             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
           };
-          
+
           dateRange = `${formatDate(minDate)} a ${formatDate(maxDate)}`;
         }
       }
     }
-    
+
     if (!dateRange) {
       const today = new Date();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       const formatDate = (date: Date) => {
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       };
-      
+
       dateRange = `${formatDate(today)} a ${formatDate(tomorrow)}`;
     }
 
     // Função para adicionar página de conteúdo com atividades
     const addContentPage = (services: any[], serviceImages: any[], dateRange: string, location: string, company: string, address: string, date: string, startTime: string, endTime: string) => {
       pdf.addPage();
-      
+
       // Fundo branco limpo
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      // Header azul com informações da empresa (mesmo padrão)
-      pdf.setFillColor(41, 128, 185);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      // Logo da Mark1 no header
-      if (mark1Logo) {
-        const logoSize = 25;
-        const logoX = 15;
-        const logoY = 7.5;
-        pdf.addImage(mark1Logo, 'JPEG', logoX, logoY, logoSize, logoSize);
-      }
-      
-      // Informações da empresa no header
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(255, 255, 255);
-      
-      // Email no lado esquerdo
-      pdf.text('administrativo@mark1hvac.com', 50, 20);
-      
-      // Nome da empresa Mark1 centralizado
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      const companyName = 'MARK1 SOLUÇÕES EM REFRIGERAÇÃO LTDA';
-      const companyNameWidth = pdf.getTextWidth(companyName);
-      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, 20);
-      
-      // Informações no lado direito
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('OR: 21 96462-6765 / 99412-7927', pageWidth - 160, 15);
-      pdf.text('CNPJ: 39.171.921/0001-90', pageWidth - 160, 25);
-      
+
+      // Desenhar cabeçalho padrão
+      drawHeader();
+
       // Título da seção
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
@@ -872,41 +822,18 @@ export async function POST(req: Request) {
       const sectionTitle = 'Relatório Diário de Obras';
       const sectionTitleWidth = pdf.getTextWidth(sectionTitle);
       pdf.text(sectionTitle, (pageWidth - sectionTitleWidth) / 2, 55);
-      
+
       // Linha separadora roxa
       pdf.setLineWidth(2);
       pdf.setDrawColor(128, 0, 128);
       pdf.line(50, 62, pageWidth - 50, 62);
-      
+
       // Informações básicas do relatório
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
-      
+
       let yPos = 95;
-      
-      // Empresa / Cliente (apenas se preenchido)
-      pdf.setFont('helvetica', 'bold');
-      if (company) {
-        pdf.text(`Empresa / Cliente: ${company}`, 50, yPos);
-        yPos += 10;
-      }
-      
-      // Endereço (apenas se preenchido)
-      if (address) {
-        pdf.text(`Endereço: ${address}`, 50, yPos);
-        yPos += 10;
-      }
-      
-      // Data (usando dateRange dos serviços se disponível, senão a data fornecida)
-      const displayDate = dateRange || new Date(date).toLocaleDateString('pt-BR');
-      pdf.text(`Data: ${displayDate}`, 50, yPos);
-      yPos += 10;
-      
-      // Horários
-      pdf.text(`Horário de Início: ${startTime}`, 50, yPos);
-      pdf.text(`Horário de Término: ${endTime}`, 200, yPos);
-      yPos += 20;
-      
+
       // Seção de atividades - apenas se houver serviços cadastrados
       if (services && services.length > 0) {
         pdf.setFontSize(14);
@@ -914,17 +841,17 @@ export async function POST(req: Request) {
         pdf.setTextColor(0, 0, 0); // Cor preta consistente
         pdf.text('Descrição das atividades:', 50, yPos);
         yPos += 20;
-        
+
         // Lista de atividades baseada nos serviços
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(0, 0, 0); // Cor preta consistente
-        
+
         services.forEach((service: any, index: number) => {
           if (service.name) {
             pdf.text(`• ${service.name}`, 70, yPos);
             yPos += 12;
-            
+
             // Verificar se há espaço na página
             if (yPos > pageHeight - 50) {
               return; // Parar se não houver espaço
@@ -932,7 +859,7 @@ export async function POST(req: Request) {
           }
         });
       }
-      
+
       // Reset de estilos
       pdf.setDrawColor(0, 0, 0);
       pdf.setLineWidth(0.2);
@@ -944,18 +871,18 @@ export async function POST(req: Request) {
     addCoverPage();
 
     console.log('Criando página de título...');
-    addTitlePage(dateRange, location, company, address, date, startTime, endTime);
-    
+    addTitlePage(dateRange, location, company, address, date, startTime, endTime, config, reportTitle);
+
     console.log('Criando página de conteúdo...');
     addContentPage(services, serviceImages, dateRange, location, company, address, date, startTime, endTime);
 
     // Processar imagens por serviço (cada serviço em páginas separadas)
     if (serviceImages.length > 0) {
       console.log(`Processando ${serviceImages.length} imagens para o relatório...`);
-      
+
       // Adicionar páginas de fotos (2 por página)
       for (let i = 0; i < serviceImages.length; i += 2) {
-        console.log(`Adicionando página com imagens ${i+1} e ${i+2 <= serviceImages.length ? i+2 : '-'}`);
+        console.log(`Adicionando página com imagens ${i + 1} e ${i + 2 <= serviceImages.length ? i + 2 : '-'}`);
         await add2PhotosPage(serviceImages, i);
       }
     } else {
@@ -965,9 +892,9 @@ export async function POST(req: Request) {
     // Adicionar páginas de fluxogramas (se houver)
     if (flowcharts.length > 0) {
       console.log(`Processando ${flowcharts.length} fluxogramas para o relatório...`);
-      
+
       for (let i = 0; i < flowcharts.length; i++) {
-        console.log(`Adicionando página com fluxograma ${i+1}`);
+        console.log(`Adicionando página com fluxograma ${i + 1}`);
         await addFlowchartsPage(flowcharts, i);
       }
     } else {
@@ -978,8 +905,8 @@ export async function POST(req: Request) {
 
     // Retornar PDF
     const pdfBuffer = Buffer.from(pdf.output('arraybuffer'));
-    
-    return new NextResponse(pdfBuffer, {
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -991,9 +918,9 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Erro interno do servidor:', error);
     return NextResponse.json(
-      { 
+      {
         message: 'Erro interno do servidor',
-        details: error.message 
+        details: error.message
       },
       { status: 500 }
     );
